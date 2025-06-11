@@ -1,0 +1,98 @@
+$primaria: #2C3E50;
+$primaria-clara: #45586c;
+$secundaria: #27AE60;
+$secundaria-clara: #3bbf72;
+$texto: #34495E;
+$realce: #F39C12;
+$ubuntu: "Ubuntu", sans-serif;
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+* {
+    font-family: "Montserrat", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: $ubuntu;
+    font-weight: 500;
+}
+
+body {
+    min-height: 100dvh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f2f2f26e !important;
+
+    #bloco-login {
+        display: flex;
+        border-radius: .75rem;
+        width: 90%;
+        max-width: 800px;
+        box-shadow: 
+            rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, 
+            rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+        background-color: #FFF;
+        overflow: hidden;
+
+        > div {
+            flex-basis: 0;
+            flex-grow: 1;
+
+            &:nth-of-type(1) {
+                background-color: $primaria;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                text-align: center;
+
+                a {
+                    display: block;
+                    color: #FFF;
+
+                    img {
+                        width: 8vw;
+                        min-width: 5rem;
+                        margin-bottom: 1rem;
+                    }
+                }
+            }
+
+            &:nth-of-type(2) {
+                padding: 3rem;
+
+                h2 {
+                    margin-bottom: 2rem;
+                }
+
+                form {
+                    display: flex;
+                    flex-direction: column;
+
+                    button {
+                        background-color: $primaria;
+                        transition: all .35s ease-in-out;
+                        color: #FFF;
+                        border-radius: 3rem;
+                        border: 1px solid $primaria;
+                        padding: .5rem 2rem;
+
+                        &:hover {
+                            background-color: $primaria-clara;
+                        }
+                    }
+
+                    &#form-esqueceu-senha {
+                        display: none;
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 600px) {
+            flex-direction: column;
+        }
+    }
+}
