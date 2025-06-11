@@ -1,0 +1,332 @@
+@charset "UTF-8";
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
+* {
+  font-family: "Montserrat", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Ubuntu", sans-serif;
+  font-weight: 500;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background-color: #2C3E50;
+  z-index: 10;
+}
+header a {
+  color: white !important;
+}
+header a img {
+  width: 4vw;
+  min-width: 4rem;
+}
+header ul li a:hover {
+  font-weight: 600;
+  color: #27AE60 !important;
+}
+header ul li:last-child {
+  background-color: #27AE60;
+  border-radius: 10rem;
+  padding: 0.1rem 0.75rem;
+}
+header ul li:last-child:hover {
+  background-color: #3bbf72;
+}
+header ul li:last-child:hover a {
+  color: #FFF !important;
+}
+@media (min-width: 992px) {
+  header ul {
+    align-items: center;
+  }
+  header ul li:last-child {
+    margin-left: 1rem;
+  }
+}
+
+main #topo {
+  padding-block: 10rem;
+  background-image: url("/img/home/endomarketing-hero-section.jpg");
+  background-size: cover;
+  position: relative;
+}
+main #topo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.25));
+  z-index: 0;
+}
+main #topo > div {
+  background-color: rgba(255, 255, 255, 0.6941176471);
+  padding: 2rem;
+  border-radius: 0.5rem;
+  width: 90%;
+  max-width: 800px;
+  margin-inline: auto;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+main #topo > div a {
+  background-color: #2C3E50;
+  color: #FFF;
+  text-decoration: none;
+  padding: 1rem;
+  transition: all 0.35s ease-in-out;
+  display: block;
+  margin-top: 2rem;
+  font-weight: 600;
+}
+main #topo > div a:hover {
+  background-color: #45586c;
+}
+main #problemas {
+  color: #34495E;
+  padding: 5rem 0;
+}
+main #problemas #bloco-img-problemas {
+  position: relative;
+}
+main #problemas #bloco-img-problemas img {
+  max-width: 100%;
+  border-radius: 1rem;
+}
+main #problemas #bloco-img-problemas::after {
+  content: "";
+  background-color: #F39C12;
+  position: absolute;
+  top: 1.5rem;
+  right: -1.5rem;
+  bottom: -1.5rem;
+  left: 1.5rem;
+  border-radius: 1rem;
+  z-index: -1;
+}
+@media (max-width: 800px) {
+  main #problemas #bloco-img-problemas::after {
+    top: 0.5rem;
+    right: -0.5rem;
+    bottom: -0.5rem;
+    left: 0.5rem;
+  }
+}
+main #como-funciona {
+  padding: 5rem 0;
+  background-color: #27AE60;
+  text-align: center;
+  color: #FFF;
+}
+main #como-funciona h1 {
+  margin-bottom: 4rem;
+}
+main #como-funciona .cardd {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.3725490196), rgba(255, 255, 255, 0.1019607843));
+  height: 100%;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  transition: all 0.35s ease-in-out;
+  cursor: pointer;
+}
+main #como-funciona .cardd svg {
+  font-size: 3.5rem;
+  color: #2C3E50;
+  margin-bottom: 1rem;
+}
+main #como-funciona .cardd h4 {
+  color: #2C3E50;
+}
+main #como-funciona .cardd p {
+  color: #2C3E50;
+  margin: 0;
+}
+main #como-funciona .cardd:hover {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4705882353), rgba(255, 255, 255, 0.1647058824));
+}
+main #resultados {
+  padding: 5rem 0;
+  color: #34495E;
+}
+main #resultados h1 ~ p {
+  margin-bottom: 4rem;
+}
+main #resultados #bloco-cardd_ {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+main #resultados #bloco-cardd_ .cardd_ {
+  background: #45586c;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  color: #FFF;
+  width: calc(50% - 0.5rem);
+  cursor: pointer;
+}
+main #resultados #bloco-cardd_ .cardd_:hover {
+  background-color: #2C3E50;
+}
+main #resultados #bloco-cardd_ .cardd_ > div {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+main #resultados #bloco-cardd_ .cardd_ > div svg {
+  font-size: 3rem;
+}
+main #resultados #bloco-cardd_ .cardd_ p {
+  margin: 1rem 0 0;
+}
+main #resultados #bloco-cardd_ .cardd_:last-of-type {
+  width: 100%;
+}
+@media (max-width: 800px) {
+  main #resultados #bloco-cardd_ .cardd_ {
+    width: 100%;
+  }
+  main #resultados #bloco-cardd_ .cardd_ > div {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+main #planos {
+  padding-bottom: 5rem;
+  color: #2C3E50;
+}
+main #planos h5, main #planos h1 {
+  text-align: center;
+}
+main #planos h1 {
+  margin-bottom: 3rem;
+}
+main #planos .card {
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 transparent;
+  overflow: hidden;
+  cursor: pointer;
+}
+main #planos .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+main #planos .card .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0;
+}
+main #planos .card .card-body .card-header {
+  position: relative;
+  text-align: center;
+}
+main #planos .card .card-body .card-header h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+main #planos .card .card-body .card-header .badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ffc107;
+  color: #000;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+main #planos .card .card-body .card-content {
+  padding: 1rem;
+}
+main #planos .card .card-body .plan-type {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+main #planos .card .card-body .subtitle {
+  color: #777;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+main #planos .card .card-body .benefits {
+  list-style: none;
+  padding-left: 0;
+}
+main #planos .card .card-body .benefits li {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+}
+main #planos .card .card-body .benefits li::before {
+  content: "✔";
+  margin-right: 0.5rem;
+  color: #28a745;
+}
+main #planos .card .card-body .btn {
+  padding: 0.75rem;
+  font-weight: bold;
+  background-color: #2C3E50;
+  border: none;
+  border-radius: 0;
+  color: #fff;
+  transition: background-color 0.3s ease;
+}
+main #planos .card .card-body .btn:hover {
+  background-color: #45586c;
+}
+main #planos .card.destaque {
+  border: 2px solid #2C3E50;
+  background-color: #f8f9fa;
+}
+
+footer {
+  background-color: #2C3E50;
+  color: #FFF;
+}
+footer #conteudo-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+footer #conteudo-footer img {
+  width: 8vw;
+  min-width: 5rem;
+  margin-bottom: 2rem;
+  display: block;
+}
+footer #conteudo-footer > div {
+  flex-basis: 0;
+  flex-grow: 1;
+}
+footer #conteudo-footer > div ul {
+  margin: 0;
+}
+footer #conteudo-footer > div ul li a {
+  color: #FFF;
+}
+@media (max-width: 800px) {
+  footer #conteudo-footer {
+    flex-wrap: wrap;
+  }
+  footer #conteudo-footer img {
+    margin-inline: auto;
+  }
+  footer #conteudo-footer > div {
+    flex-basis: 100%;
+    flex-grow: initial;
+  }
+  footer #conteudo-footer > div:first-of-type p {
+    text-align: center;
+  }
+  footer #conteudo-footer > div:not(:first-of-type) {
+    flex-basis: calc(33.33% - 0.67rem);
+  }
+}
+@media (max-width: 600px) {
+  footer #conteudo-footer > div:not(:first-of-type) {
+    flex-basis: calc(50% - 0.5rem);
+  }
+}/*# sourceMappingURL=style.css.map */

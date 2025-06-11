@@ -1,0 +1,436 @@
+$primaria: #2C3E50;
+$primaria-clara: #45586c;
+$secundaria: #27AE60;
+$secundaria-clara: #3bbf72;
+$texto: #34495E;
+$realce: #F39C12;
+$ubuntu: "Ubuntu", sans-serif;
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+* {
+    font-family: "Montserrat", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: $ubuntu;
+    font-weight: 500;
+}
+
+header {
+    position: sticky;
+    top: 0;
+    background-color: $primaria;
+    z-index: 10;
+
+    a {
+        color: #FFFF !important;
+
+        img {
+            width: 4vw;
+            min-width: 4rem;
+        }
+    }
+
+    // .navbar-toggler {
+    //     border-color: #FFF;
+    //     padding: 0;
+    //     border: 0;
+
+    //     span {
+    //         display: block;
+    //         height: .2rem;
+    //         width: 2rem;
+    //         background-color: #FFF;
+    //         border-radius: .5rem;
+
+    //         &:not(:first-of-type) {
+    //             margin-top: .4rem;
+    //         }
+    //     }
+
+    //     &:focus {
+    //         box-shadow: none;
+    //     }
+    // }
+    
+    ul {
+        li {
+            a {
+                &:hover {
+                    font-weight: 600;
+                    color: $secundaria !important;
+                }
+            }
+
+            &:last-child {
+                background-color: $secundaria;  
+                border-radius: 10rem;
+                padding: .1rem .75rem;
+                
+                &:hover {
+                    background-color: $secundaria-clara;
+                    
+                    a {
+                        color: #FFF !important;
+                    }
+                }
+            }
+        }
+
+        @media (min-width: 992px) {
+            align-items: center;
+
+            li {
+                &:last-child {
+                    margin-left: 1rem;                    
+                }
+            }
+        }
+    }
+}
+
+main {
+    #topo {
+        padding-block: 10rem;
+        background-image: url('/img/home/endomarketing-hero-section.jpg');
+        background-size: cover;
+        position: relative;
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,.75), rgba(0,0,0,.25));
+            z-index: 0;
+        }
+
+        > div {
+            background-color: #ffffffb1;
+            padding: 2rem;
+            border-radius: .5rem;
+            width: 90%;
+            max-width: 800px;
+            margin-inline: auto;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+
+            a {
+                background-color: $primaria;
+                color: #FFF;
+                text-decoration: none;
+                padding: 1rem;
+                transition: all .35s ease-in-out;
+                display: block;
+                margin-top: 2rem;
+                font-weight: 600;
+
+                &:hover {
+                    background-color: $primaria-clara;
+                }
+            }
+        }
+    }
+
+    #problemas {
+        color: $texto;
+        padding: 5rem 0;
+
+        #bloco-img-problemas {     
+            position: relative;
+            
+            img {
+                max-width: 100%;
+                border-radius: 1rem;
+            }
+
+            &::after {
+                content: '';
+                background-color: $realce;
+                position: absolute;
+                top: 1.5rem;
+                right: -1.5rem;
+                bottom: -1.5rem;
+                left: 1.5rem;
+                border-radius: 1rem;
+                z-index: -1;
+
+                @media (max-width: 800px) {
+                    top: .5rem;
+                    right: -.5rem;
+                    bottom: -.5rem;
+                    left: .5rem;
+                }
+            }
+        }
+    }
+
+    #como-funciona {
+        padding: 5rem 0;
+        background-color: $secundaria;
+        text-align: center;
+        color: #FFF;
+
+        h1 {
+            margin-bottom: 4rem;
+        }
+
+        .cardd {
+            background: linear-gradient(to bottom, #ffffff5f, #ffffff1a);
+            height: 100%;
+            padding: 2rem;
+            border-radius: .5rem;
+            transition: all .35s ease-in-out;
+            cursor: pointer;
+
+            svg {
+                font-size: 3.5rem;
+                color: $primaria;
+                margin-bottom: 1rem;
+            }
+
+            h4 {
+                color: $primaria;
+            }
+
+            p {
+                color: $primaria;
+                margin: 0;
+            }
+
+            &:hover {
+                background: linear-gradient(to bottom, #ffffff78, #ffffff2a);
+            }
+        }
+    }
+
+    #resultados {
+        padding: 5rem 0;
+        color: $texto;
+
+        h1 ~ p {
+            margin-bottom: 4rem;
+        }
+
+        #bloco-cardd_ {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+
+            .cardd_ {
+                background: $primaria-clara;
+                padding: 2rem;
+                border-radius: .5rem;
+                color: #FFF;
+                width: calc(50% - .5rem);
+                cursor: pointer;
+
+                &:hover {
+                    background-color: $primaria;
+                }
+    
+                > div {
+                    display: flex;
+                    align-items: center;
+                    gap: 1.5rem;
+    
+                    svg {
+                        font-size: 3rem;
+                    }
+                }
+    
+                p {
+                    margin: 1rem 0 0;
+                }
+
+                &:last-of-type {
+                    width: 100%;
+                }
+            }
+
+            @media (max-width: 800px) {
+                .cardd_ {
+                    width: 100%;
+
+                    > div {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+                }
+            }
+        }
+    }
+
+    #planos {
+        padding-bottom: 5rem;
+        color: $primaria;
+
+        h5, h1 {
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 3rem;
+        }
+        
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 transparent;
+            overflow: hidden;
+            cursor: pointer;
+
+            &:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+            }
+
+            .card-body {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                padding: 0;
+
+                .card-header {
+                    position: relative;
+                    text-align: center;
+
+                    h3 {
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        margin-bottom: 0.25rem;
+                    }
+
+                    .badge {
+                        position: absolute;
+                        top: 0;
+                        right: 0;
+                        background: #ffc107;
+                        color: #000;
+                        font-size: 0.75rem;
+                        padding: 0.25rem 0.5rem;
+                        border-radius: 4px;
+                    }
+                }
+
+                .card-content {
+                    padding: 1rem;
+                }
+
+                .plan-type {
+                    font-weight: 600;
+                    margin-bottom: 0.5rem;
+                }
+
+                .subtitle {
+                    color: #777;
+                    display: block;
+                    margin-bottom: 0.5rem;
+                }
+
+                .benefits {
+                    list-style: none;
+                    padding-left: 0;
+
+                    li {
+                        margin-bottom: 0.5rem;
+                        font-size: 0.95rem;
+                        display: flex;
+                        align-items: center;
+
+                        &::before {
+                            content: '✔';
+                            margin-right: 0.5rem;
+                            color: #28a745;
+                        }
+                    }
+                }
+
+                .btn {
+                    padding: 0.75rem;
+                    font-weight: bold;
+                    background-color: $primaria;
+                    border: none;
+                    border-radius: 0;
+                    color: #fff;
+                    transition: background-color 0.3s ease;
+
+                    &:hover {
+                        background-color: $primaria-clara;
+                    }
+                }
+            }
+
+            &.destaque {
+                border: 2px solid $primaria;
+                background-color: #f8f9fa;
+            }
+        }
+    }
+}
+
+footer {
+    background-color: $primaria;
+    color: #FFF;
+
+    #conteudo-footer {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        
+        img {
+            width: 8vw;
+            min-width: 5rem;
+            margin-bottom: 2rem;
+            display: block;
+        }
+
+        > div {
+            flex-basis: 0;
+            flex-grow: 1;
+
+            ul {
+                margin: 0;
+
+                li {
+                    a {
+                        color: #FFF;
+                    }
+                }
+            }
+        }
+
+        @media (max-width: 800px) {
+            flex-wrap: wrap;
+
+            img {
+                margin-inline: auto;
+            }
+
+            > div {
+                flex-basis: 100%;
+                flex-grow: initial;
+
+                &:first-of-type {
+                    p {
+                        text-align: center;
+                    }
+                }
+
+                &:not(:first-of-type) {
+                    flex-basis: calc(33.33% - 0.67rem);
+                }
+            }
+        }     
+        
+        @media (max-width: 600px) {
+            > div {
+                &:not(:first-of-type) {
+                    flex-basis: calc(50% - .5rem);
+                }
+            }
+        }
+    }
+}
