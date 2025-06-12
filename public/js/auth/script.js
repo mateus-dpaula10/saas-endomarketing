@@ -3,8 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnEsqueceuLogin = document.getElementById('esqueceu-senha-login')
     const formsEsqueceuLogin = document.getElementById('form-esqueceu-senha')
     const btnLogin = document.getElementById('voltar-login')
-    let textInitalLogin
+    let textInitalLogin = 1
     const titulo = document.querySelector('#bloco-login h2')
+
+    verificaTexto()
 
     btnEsqueceuLogin.addEventListener('click', (e) => {
         e.preventDefault()
@@ -25,4 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function verificaTexto() {
         titulo.innerText = textInitalLogin === 1 ? 'Acesse sua conta' : 'Recupere sua conta'
     }
+
+    const alerts = document.querySelectorAll('.alert')
+    alerts.forEach((alert) => {
+        if (alert) {
+            setTimeout(() => {
+                alert.style.display = 'none'
+            }, 3000)
+        }
+    })
 })

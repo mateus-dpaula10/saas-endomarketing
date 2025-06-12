@@ -1,0 +1,108 @@
+$primaria: #2C3E50;
+$primaria-clara: #45586c;
+$secundaria: #27AE60;
+$secundaria-clara: #3bbf72;
+$texto: #34495E;
+$realce: #F39C12;
+$ubuntu: "Ubuntu", sans-serif;
+
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+* {
+    font-family: "Montserrat", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: $ubuntu;
+    font-weight: 500;
+}
+
+body {
+    display: flex;
+    gap: 5rem;
+
+    aside {
+        width: 240px;
+        border-right: 1px solid;
+        min-height: 100dvh;
+        padding: 2rem 0;
+        background-color: $primaria;
+        position: relative;
+        transition: all .35s ease-in-out;
+    
+        #close-menu {
+            position: absolute;
+            right: -50px;
+            top: 0;
+            width: 50px;
+            height: 50px;
+            background-color: $primaria;
+            border: 0;
+            color: #FFF;
+            border-radius: 0 .25rem .25rem 0;
+        }
+    
+        a {
+            img {
+                width: 6vw;
+                min-width: 6rem;
+                margin: 0 auto;
+                display: block;
+            }
+        }
+    
+        nav {
+            padding: 2rem 0;
+            
+            ul {
+                padding: 0;
+                margin: 0;
+    
+                li {
+                    list-style: none;
+                    background-color: $primaria-clara;
+                    padding: 1rem 2rem;
+                    cursor: pointer;
+                    color: #FFF;
+    
+                    &:not(:last-of-type) {
+                        border-bottom: 1px solid $primaria;
+                    }
+    
+                    a {
+                        color: #FFF;
+                        display: block;
+                        width: 100%;
+                    }
+    
+                    &:hover {
+                        background-color: $primaria;
+                    }
+                }
+            }
+        }
+    }
+
+    main {
+        flex-basis: 0;
+        flex-grow: 1;
+    }
+}
+
+
+// empresa
+.empresa {
+    .header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3rem; 
+    }
+}
+
+.usuario {
+    .header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3rem; 
+    }
+}

@@ -48,6 +48,7 @@ body #bloco-login > div:nth-of-type(1) a img {
 }
 body #bloco-login > div:nth-of-type(2) {
   padding: 3rem;
+  color: #2C3E50;
 }
 body #bloco-login > div:nth-of-type(2) h2 {
   margin-bottom: 2rem;

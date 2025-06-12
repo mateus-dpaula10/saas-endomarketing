@@ -20,9 +20,19 @@
         </div>
 
         <div>
-            <h2>Acesse sua conta</h2>
+            @if ($errors->any())
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-            <form id="form-login" method="POST">
+            <h2></h2>
+
+            <form id="form-login" method="POST" action="{{ route('login.login') }}">
                 @csrf
                 
                 <div class="form-group">
@@ -32,7 +42,7 @@
 
                 <div class="form-group mt-4">
                     <label for="password" class="form-label">Senha</label>
-                    <input type="passwprd" name="password" id="password" class="form-control">
+                    <input type="password" name="password" id="password" class="form-control">
                 </div>
 
                 <button class="mt-4" type="submit" class="">Entrar</button>

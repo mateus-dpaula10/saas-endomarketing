@@ -1,0 +1,81 @@
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
+* {
+  font-family: "Montserrat", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Ubuntu", sans-serif;
+  font-weight: 500;
+}
+
+body {
+  display: flex;
+  gap: 5rem;
+}
+body aside {
+  width: 240px;
+  border-right: 1px solid;
+  min-height: 100dvh;
+  padding: 2rem 0;
+  background-color: #2C3E50;
+  position: relative;
+  transition: all 0.35s ease-in-out;
+}
+body aside #close-menu {
+  position: absolute;
+  right: -50px;
+  top: 0;
+  width: 50px;
+  height: 50px;
+  background-color: #2C3E50;
+  border: 0;
+  color: #FFF;
+  border-radius: 0 0.25rem 0.25rem 0;
+}
+body aside a img {
+  width: 6vw;
+  min-width: 6rem;
+  margin: 0 auto;
+  display: block;
+}
+body aside nav {
+  padding: 2rem 0;
+}
+body aside nav ul {
+  padding: 0;
+  margin: 0;
+}
+body aside nav ul li {
+  list-style: none;
+  background-color: #45586c;
+  padding: 1rem 2rem;
+  cursor: pointer;
+  color: #FFF;
+}
+body aside nav ul li:not(:last-of-type) {
+  border-bottom: 1px solid #2C3E50;
+}
+body aside nav ul li a {
+  color: #FFF;
+  display: block;
+  width: 100%;
+}
+body aside nav ul li:hover {
+  background-color: #2C3E50;
+}
+body main {
+  flex-basis: 0;
+  flex-grow: 1;
+}
+
+.empresa .header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}
+
+.usuario .header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
+}/*# sourceMappingURL=style.css.map */
