@@ -27,14 +27,17 @@
                 @if (auth()->user())
                     <li>Usuário logado: {{ auth()->user()->name }}</li>
                 @endif
-                @if(auth()->check())
+                @if(auth()->user())
                     <li><a href="{{ route('dashboard.index') }}">Dashboard</a></li>
                 @endif
                 @if(auth()->user()->role === 'superadmin')
                     <li><a href="{{ route('empresa.index') }}">Empresas</a></li>
                 @endif
-                @if(auth()->check())
+                @if(auth()->user())
                     <li><a href="{{ route('usuario.index') }}">Usuários</a></li>
+                @endif
+                @if(auth()->user())
+                    <li><a href="{{ route('diagnostico.index') }}">Diagnósticos</a></li>
                 @endif
                 <li>
                     <a href="#" onclick="event.preventDefault(); document.getElementById('form-logout').submit()">      

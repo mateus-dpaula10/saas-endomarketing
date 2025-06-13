@@ -11,4 +11,8 @@ class Tenant extends Model
     public function users() {
         return $this->hasMany(User::class);
     }
+
+    public function diagnostics() {
+        return $this->belongsToMany(Diagnostic::class, 'diagnostic_tenant');
+    }
 }

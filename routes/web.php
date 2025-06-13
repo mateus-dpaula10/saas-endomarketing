@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\DiagnosticController;
 
 Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
@@ -21,10 +22,18 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::resource('/empresa', TenantController::class);
+    Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
+    Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
+});
+
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');
+    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'answer'])->name('diagnostico.answer');
 });
 
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     Route::post('/usuario', [UserController::class, 'store'])->name('usuario.store');
     Route::get('/usuario/create', [UserController::class, 'create'])->name('usuario.create');
     Route::delete('/usuario/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');
+    Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
 });

@@ -78,4 +78,10 @@ body main {
   display: flex;
   justify-content: space-between;
   margin-bottom: 3rem;
+}
+
+.diagnostico .header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
 }/*# sourceMappingURL=style.css.map */
