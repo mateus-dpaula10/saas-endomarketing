@@ -27,9 +27,15 @@
                 @if (auth()->user())
                     <li>Usuário logado: {{ auth()->user()->name }}</li>
                 @endif
-                <li><a href="{{ route('dashboard.index') }}">Dashboard</a></li>
-                <li><a href="{{ route('empresa.index') }}">Empresas</a></li>
-                <li><a href="{{ route('usuario.index') }}">Usuários</a></li>
+                @if(auth()->check())
+                    <li><a href="{{ route('dashboard.index') }}">Dashboard</a></li>
+                @endif
+                @if(auth()->user()->role === 'superadmin')
+                    <li><a href="{{ route('empresa.index') }}">Empresas</a></li>
+                @endif
+                @if(auth()->check())
+                    <li><a href="{{ route('usuario.index') }}">Usuários</a></li>
+                @endif
                 <li>
                     <a href="#" onclick="event.preventDefault(); document.getElementById('form-logout').submit()">      
                         Sair            

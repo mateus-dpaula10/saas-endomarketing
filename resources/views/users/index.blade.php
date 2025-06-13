@@ -24,9 +24,7 @@
                                 <th scope="col">E-mail</th>
                                 <th scope="col">Empresa</th>
                                 <th scope="col">Função</th>
-                                @if (auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
-                                    <th scope="col">Ações</th>
-                                @endif
+                                <th scope="col">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -43,20 +41,33 @@
                                     <th scope="row">{{ $index + 1 }}</th>
                                     <td>{{ $usuario->name }}</td>
                                     <td>{{ $usuario->email }}</td>
-                                    <td>{{ $usuario->tenant->nome }}</td>
+                                    <td>{{ $usuario->tenant?->nome ?? 'Sem empresa' }}</td>
                                     <td>{{ $papel }}</td>
-                                    @if (auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
-                                        <td class="d-flex gap-1">
+                                    <td class="d-flex gap-1">
+                                        @if (
+                                            auth()->user()->role === 'superadmin' ||
+                                            (auth()->user()->role === 'admin' && auth()->user()->tenant_id === $usuario->tenant_id && $usuario->role !== 'superadmin') ||
+                                            auth()->user()->id === $usuario->id
+                                        )
                                             <a href="{{ route('usuario.edit', $usuario->id) }}" class="btn btn-warning">Editar</a>
+                                        @else
+                                            Nenhum ação
+                                        @endif
 
+                                        @if (
+                                            (auth()->user()->role === 'superadmin') ||
+                                            (auth()->user()->role === 'admin' && 
+                                                auth()->user()->tenant_id === $usuario->tenant_id && 
+                                                $usuario->role !== 'superadmin')
+                                        )
                                             <form action="{{ route('usuario.destroy', $usuario->id) }}" method="POST">
                                                 @csrf
                                                 @method('DELETE')
-
+        
                                                 <button type="submit" class="btn btn-danger">Excluir</button>
                                             </form>
-                                        </td>
-                                    @endif
+                                        @endif
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

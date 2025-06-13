@@ -7,22 +7,24 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\UserController;
 
-Route::resource('/', HomeController::class);
+Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
 Route::post('/login', [AuthController::class, 'login'])->name('login.login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);    
+    Route::get('/usuario', [UserController::class, 'index'])->name('usuario.index');
+    Route::get('/usuario/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
+    Route::patch('/usuario/{usuario}', [UserController::class, 'update'])->name('usuario.update');
 });
 
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    
+Route::middleware(['auth', 'role:superadmin'])->group(function () {
+    Route::resource('/empresa', TenantController::class);
 });
 
-Route::middleware(['auth', 'role:user'])->group(function () {
-
+Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+    Route::post('/usuario', [UserController::class, 'store'])->name('usuario.store');
+    Route::get('/usuario/create', [UserController::class, 'create'])->name('usuario.create');
+    Route::delete('/usuario/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');
 });
-
-Route::resource('/empresa', TenantController::class);
-Route::resource('/usuario', UserController::class);

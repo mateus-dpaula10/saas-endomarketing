@@ -17,7 +17,13 @@ class UserController extends Controller
     {
         $userAuth = Auth::user();
 
-        $data = User::where('tenant_id', $userAuth->tenant_id)->with('tenant')->get();
+        if ($userAuth->role === 'superadmin') {
+            $data = User::with('tenant')->get();
+        } else {
+            $data = User::where('tenant_id', $userAuth->tenant_id)
+                ->with('tenant')
+                ->get();
+        }
 
         return view ('users.index', ['usuarios' => $data]);
     }

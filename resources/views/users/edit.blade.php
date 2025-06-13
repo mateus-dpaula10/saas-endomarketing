@@ -19,11 +19,18 @@
                         <label for="name" class="form-label">Nome</label>
                         <input type="text" class="form-control" name="name" id="name" value="{{ old('name', $usuario->name) }}" required>
                     </div>
-                    
-                    <div class="form-group mt-3">
-                        <label for="email" class="form-label">E-mail</label>
-                        <input type="email" class="form-control" name="email" id="email" value="{{ old('email', $usuario->email) }}" required>
-                    </div>
+
+                    @if (auth()->user()->role === 'admin' || auth()->user()->role === 'superadmin')
+                        <div class="form-group mt-3">
+                            <label for="email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" name="email" id="email" value="{{ old('email', $usuario->email) }}" required>
+                        </div>
+                    @else
+                        <div class="form-group mt-3">
+                            <label for="email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" name="email" id="email" value="{{ old('email', $usuario->email) }}" required readonly>
+                        </div>
+                    @endif                    
 
                     <div class="form-group mt-3">
                         <label for="password" class="form-label">Senha</label>
