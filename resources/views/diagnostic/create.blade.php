@@ -38,9 +38,11 @@
                         <label for="" class="form-label">Perguntas</label>
                         <input type="text" name="questions[]" class="form-control">
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="addQuestion()">Adicionar pergunta</button>
+                    <button type="button" class="btn btn-secondary mt-1" onclick="addQuestion()">Adicionar pergunta</button>
 
-                    <button type="submit" class="btn btn-outline-primary mt-3">Cadastrar</button>
+                    <div class="form-group mt-3">
+                        <button type="submit" class="btn btn-outline-primary">Cadastrar</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -54,7 +56,7 @@
             const input = document.createElement('input')
             input.type = 'text'
             input.name = 'questions[]'
-            input.className = 'form-control mb-2'
+            input.className = 'form-control my-2'
             input.required = true
             wrapper.appendChild(input)
         }

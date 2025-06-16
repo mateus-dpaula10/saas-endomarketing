@@ -18,8 +18,10 @@ class UserController extends Controller
         $userAuth = Auth::user();
 
         if ($userAuth->role === 'superadmin') {
+            // pegando todos
             $data = User::with('tenant')->get();
         } else {
+            // pegando apenas os da sua empresa
             $data = User::where('tenant_id', $userAuth->tenant_id)
                 ->with('tenant')
                 ->get();

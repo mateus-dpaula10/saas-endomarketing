@@ -31,7 +31,7 @@
                                     <th scope="row">{{ $index + 1 }}</th>
                                     <td>{{ $empresa->nome }}</td>
                                     <td>{{ $empresa->dominio }}</td>
-                                    <td class="d-flex gap-1">
+                                    <td class="d-flex gap-1 align-items-center">
                                         <a href="{{ route('empresa.edit', $empresa->id) }}" class="btn btn-warning">Editar</a>
 
                                         <form action="{{ route('empresa.destroy', $empresa->id) }}" method="POST">

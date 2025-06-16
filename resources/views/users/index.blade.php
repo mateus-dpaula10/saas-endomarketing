@@ -56,9 +56,7 @@
 
                                         @if (
                                             (auth()->user()->role === 'superadmin') ||
-                                            (auth()->user()->role === 'admin' && 
-                                                auth()->user()->tenant_id === $usuario->tenant_id && 
-                                                $usuario->role !== 'superadmin')
+                                            (auth()->user()->role === 'admin' && auth()->user()->tenant_id === $usuario->tenant_id && $usuario->role !== 'superadmin')
                                         )
                                             <form action="{{ route('usuario.destroy', $usuario->id) }}" method="POST">
                                                 @csrf

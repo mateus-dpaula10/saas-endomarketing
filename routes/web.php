@@ -24,11 +24,15 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::resource('/empresa', TenantController::class);
     Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
     Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
+    Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
+    Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
+    Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');
-    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'answer'])->name('diagnostico.answer');
+    Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
+    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
 });
 
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {

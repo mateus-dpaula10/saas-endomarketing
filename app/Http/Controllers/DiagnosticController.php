@@ -17,9 +17,13 @@ class DiagnosticController extends Controller
     {
         $user = Auth::user();
 
-        $diagnostics = Diagnostic::whereHas('tenants', function($query) use ($user) {
-            $query->where('tenants.id', $user->tenant_id);
-        })->get();
+        if ($user->role === 'superadmin') {
+            $diagnostics = Diagnostic::all();
+        } else {
+            $diagnostics = Diagnostic::whereHas('tenants', function($query) use ($user) {
+                $query->where('tenants.id', $user->tenant_id);
+            })->get();  
+        }        
 
         return view ('diagnostic.index', compact('diagnostics'));
     }
@@ -45,7 +49,7 @@ class DiagnosticController extends Controller
             'questions'     => 'required|array',
             'questions.*'   => 'required|string',
             'tenants'       => 'required|array',
-            'tenants.*'     => 'exists:tenants,id',
+            'tenants.*'     => 'exists:tenants,id'
         ]);
 
         $diagnostic = Diagnostic::create([
@@ -73,35 +77,107 @@ class DiagnosticController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Diagnostic $diagnostic)
+    public function edit(string $id)
     {
-        //
+        $diagnostic = Diagnostic::with('questions', 'tenants')->findOrFail($id);
+        $tenants = Tenant::all();
+
+        return view ('diagnostic.edit', compact(['diagnostic', 'tenants']));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Diagnostic $diagnostic)
+    public function update(Request $request, string $id)
     {
-        //
+        $diagnostic = Diagnostic::findOrFail($id);
+
+        $request->validate([
+            'title'          => 'required|string',
+            'description'    => 'nullable|string',
+            'questions'      => 'required|array',
+            'questions.*'    => 'required|string',
+            'tenants'        => 'required|array',
+            'tenants.*'      => 'exists:tenants,id',
+            'question_ids'   => 'array',
+            'question_ids.*' => 'nullable|integer|exists:questions,id'
+        ]);
+
+        $diagnostic->update([
+            'title'       => $request->title,
+            'description' => $request->description
+        ]);
+
+        $diagnostic->tenants()->sync($request->tenants);
+
+        $questionIds = $request->input('question_ids', []);
+        $questions = $request->input('questions');
+
+        $existingQuestionIds = $diagnostic->questions()->pluck('id')->toArray();
+
+        $submittedIds = [];
+
+        foreach ($questions as $index => $text) {
+            if (!empty($questionIds[$index])) {
+                $question = $diagnostic->questions()->find($questionIds[$index]);
+                if ($question) {
+                    $question->update(['text' => $text]);
+                    $submittedIds[] = $question->id;
+                }
+            } else {
+                $newQuestion = $diagnostic->questions()->create(['text' => $text]);
+                $submittedIds[] = $newQuestion->id;
+            }
+        }
+
+        $toDelete = array_diff($existingQuestionIds, $submittedIds);
+        if (!empty($toDelete)) {
+            $diagnostic->questions()->whereIn('id', $toDelete)->delete();
+        }
+
+        return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico atualizado com sucesso!');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Diagnostic $diagnostic)
+    public function destroy(string $id)
     {
-        //
+        $diagnostic = Diagnostic::with('questions', 'answers', 'tenants')->findOrFail($id);
+
+        $diagnostic->delete();
+
+        return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico excluído com sucesso!');
     }
 
-    public function available() {
-        $diagnostics = Diagnostic::whereNull('tenant_id')->with('questions')->get();
+    // public function available() {
+    //     $diagnostics = Diagnostic::whereNull('tenant_id')->with('questions')->get();
 
-        return view ('diagnostic.availables', compact('diagnostics'));
+    //     return view ('diagnostic.availables', compact('diagnostics'));
+    // }
+
+    public function showAnswerForm(string $id) {
+        $user = Auth::user();
+        $diagnostic = Diagnostic::with('questions', 'tenants')->findOrFail($id);
+
+        if ($user->role !== 'admin' || !$diagnostic->tenants->contains('id', $user->tenant_id)) {
+            abort(403, 'Você não tem permissão para acessar esse diagnóstico.');
+        }
+
+        $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+            ->where('tenant_id', $user->tenant_id)
+            ->exists();
+
+        if ($alreadyAnswered) {
+            return redirect()->route('diagnostico.index')
+                ->with('error', 'Este diagnóstico já foi respondido pela empresa.');
+        }
+
+        return view ('diagnostic.availables', compact('diagnostic'));
     }
 
-    public function answer(Request $request, $diagnosticId) {
-        $diagnostic = Diagnostic::findOrFail($diagnosticId);
+    public function submitAnswer(Request $request, string $id) {
+        $diagnostic = Diagnostic::with('questions')->findOrFail($id);
         $user = Auth::user();
 
         $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
@@ -118,7 +194,13 @@ class DiagnosticController extends Controller
             'answers.*' => 'required|integer|min:1|max:5'
         ]);
 
+        $validQuestionIds = $diagnostic->questions->pluck('id')->toArray(); 
+
         foreach ($request->answers as $questionId => $note) {
+            if (!in_array($questionId, $validQuestionIds)) {
+                continue;
+            }
+
             Answer::create([
                 'user_id'       => $user->id,
                 'diagnostic_id' => $diagnostic->id,
@@ -128,6 +210,6 @@ class DiagnosticController extends Controller
             ]);
         }
         
-        return redirect()->route('diagnostico.available')->with('success', 'Respostas enviadas com sucesso!');
+        return redirect()->route('diagnostico.index')->with('success', 'Respostas enviadas com sucesso!');
     }
 }
