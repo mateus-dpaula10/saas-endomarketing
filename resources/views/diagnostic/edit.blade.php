@@ -41,6 +41,18 @@
                     </div>
 
                     <div class="form-group mt-3">
+                        <label for="start" class="form-label">Início do período</label>
+                        <input type="date" class="form-control" name="start" id="start"
+                            value="{{ old('start', optional($diagnostic->periods->first())->start ? \Carbon\Carbon::parse($diagnostic->periods->first()->start)->format('Y-m-d') : '') }}" required>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label for="end" class="form-label">Fim do período</label>
+                        <input type="date" class="form-control" name="end" id="end"
+                            value="{{ old('end', optional($diagnostic->periods->first())->end ? \Carbon\Carbon::parse($diagnostic->periods->first()->end)->format('Y-m-d') : '') }}" required>
+                    </div>
+
+                    <div class="form-group mt-3">
                         <label for="tenants" class="form-label">Empresas que terão acesso</label>
                         <select name="tenants[]" id="tenants" class="form-select" multiple required>
                             @foreach ($tenants as $tenant)

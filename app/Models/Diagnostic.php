@@ -21,4 +21,8 @@ class Diagnostic extends Model
     public function tenants() {
         return $this->belongsToMany(Tenant::class, 'diagnostic_tenant');
     }
+
+    public function periods() {
+        return $this->hasMany(DiagnosticPeriod::class);
+    }
 }

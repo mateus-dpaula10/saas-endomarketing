@@ -25,6 +25,16 @@
                     </div>
 
                     <div class="form-group mt-3">
+                        <label for="start" class="form-label">Início do período</label>
+                        <input type="date" class="form-control" name="start" id="start" required>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label for="end" class="form-label">Fim do período</label>
+                        <input type="date" class="form-control" name="end" id="end" required>
+                    </div>
+
+                    <div class="form-group mt-3">
                         <label for="tenants" class="form-label">Empresas que terão acesso</label>
                         <select name="tenants[]" id="tenants" class="form-select" multiple required>
                             @foreach ($tenants as $tenant)

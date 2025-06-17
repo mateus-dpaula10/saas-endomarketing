@@ -13,4 +13,16 @@ class Answer extends Model
     public function question() {
         return $this->belongsTo(Question::class);
     }
+
+    public function diagnosticPeriod() {
+        return $this->belongsTo(DiagnosticPeriod::class);
+    }
+
+    public function diagnostic() {
+        return $this->belongsTo(Diagnostic::class);
+    }
+
+    public function period() {
+        return $this->belongsTo(DiagnosticPeriod::class, 'diagnostic_period_id');
+    }
 }
