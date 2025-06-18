@@ -13,7 +13,8 @@
     <td class="d-flex gap-1 align-items-center">
         @php
             $user = auth()->user();
-            $hasRelationWithTenant = $diagnostic->tenants->contains('id', $user->tenant_id);            
+            $hasRelationWithTenant = $diagnostic->tenants->contains('id', $user->tenant_id);   
+
             $currentPeriod = $diagnostic->periods
                 ->where('tenant_id', $user->tenant_id)
                 ->filter(fn($p) => now()->between(Carbon\Carbon::parse($p->start), Carbon\Carbon::parse($p->end)))
@@ -21,14 +22,18 @@
 
             $hasAnswered = $currentPeriod
                 ? $diagnostic->answers
-                    ->where('tenant_id', $user->tenant_id)
                     ->where('diagnostic_period_id', $currentPeriod->id)
+                    ->where('user_id', $user->id)
                     ->isNotEmpty()
                 : false;
         @endphp
 
-        @if ($user->role === 'admin' && $hasRelationWithTenant)
-            @if ($currentPeriod && !$hasAnswered)
+        @if (in_array($user->role, ['admin', 'user']) && $hasRelationWithTenant)
+            @php
+                $hasQuestions = $diagnostic->questions->isNotEmpty();
+            @endphp
+
+            @if ($currentPeriod && !$hasAnswered && $hasQuestions)
                 <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
             @elseif ($hasAnswered)
                 <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{$diagnostic->id}}">

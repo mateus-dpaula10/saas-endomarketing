@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
             $table->text('text');
+            $table->string('category')->nullable();
+            $table->enum('target', ['admin', 'user'])->default('admin');
             $table->foreignId('diagnostic_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });

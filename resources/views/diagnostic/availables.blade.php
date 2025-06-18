@@ -21,7 +21,7 @@
                 @endif
 
                 <div class="header">
-                    <h4>Responser diagnóstico '{{ $diagnostic->title }}'</h4>
+                    <h4>Responder diagnóstico '{{ $diagnostic->title }}'</h4>
                     <a href="{{ route('diagnostico.index') }}"><i class="fa-solid fa-arrow-left me-2"></i>Voltar</a>
                 </div>
                     
@@ -32,13 +32,12 @@
                     <div class="card-body">
                         <p>{{ $diagnostic->description }}</p>
 
-                        @php
-                            $answer = $diagnostic->answers()->where('tenant_id', auth()->user()->tenant_id)->exists();
-                        @endphp
-
-                        @if (!$answer)
+                        @if ($diagnostic->questions->isEmpty())
+                            <p class="text-muted bg-light p-3 rounded-1">Nenhuma pergunta disponível para seu perfil.</p>
+                        @else
                             <form action="{{ route('diagnostico.answer', $diagnostic->id) }}" method="POST">
                                 @csrf
+                                <input type="hidden" name="diagnostic_period_id" value="{{ $currentPeriod->id }}">
 
                                 @foreach ($diagnostic->questions as $question)
                                     <div class="mb-3">
@@ -54,8 +53,6 @@
 
                                 <button type="submit" class="btn btn-primary">Enviar respostas</button>
                             </form>
-                        @else
-                            <p class="mb-0 bg-secondary p-3 text-white rounded-1">Diagnóstico já respondido pela sua empresa.</p>
                         @endif
                     </div>
                 </div>

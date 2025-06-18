@@ -19,33 +19,41 @@ class DiagnosticController extends Controller
     {
         $user = Auth::user();
         $now = Carbon::now();
+        $role = $user->role;
+        $tenantId = $user->tenant_id;
 
-        $diagnostics = Diagnostic::with(['periods', 'answers', 'tenants'])->get();
+        $diagnostics = Diagnostic::with([
+            'periods', 
+            'answers', 
+            'tenants',
+            'questions' => function ($query) use ($role) {
+                $query->where('target', $role);
+            }
+        ])->get();
+
         $availableDiagnostics = collect();
+        
+        foreach ($diagnostics as $diagnostic) {
+            if (!$diagnostic->tenants->contains('id', $tenantId)) {
+                continue;
+            }
 
-        if ($user->role === 'admin') {
-            foreach ($diagnostics as $diagnostic) {
-                if (!$diagnostic->tenants->contains('id', $user->tenant_id)) {
-                    continue;
-                }
+            $period = $diagnostic->periods
+                ->where('tenant_id', $user->tenant_id)
+                ->filter(fn($p) => $now->between(Carbon::parse($p->start), Carbon::parse($p->end)))
+                ->first();
 
-                $period = $diagnostic->periods
-                    ->where('tenant_id', $user->tenant_id)
-                    ->filter(fn($p) => $now->between(Carbon::parse($p->start), Carbon::parse($p->end)))
-                    ->first();
-    
-                if (!$period) {
-                    continue;
-                }
+            if (!$period) {
+                continue;
+            }
 
-                $alreadyAnswered = $diagnostic->answers
-                    ->where('tenant_id', $user->tenant_id)
-                    ->where('diagnostic_period_id', $period->id)
-                    ->isNotEmpty();
+            $alreadyAnswered = $diagnostic->answers
+                ->where('user_id', $user->id)
+                ->where('diagnostic_period_id', $period->id)
+                ->isNotEmpty();
 
-                if (!$alreadyAnswered) {
-                    $availableDiagnostics->push($diagnostic);
-                }
+            if (!$alreadyAnswered) {
+                $availableDiagnostics->push($diagnostic);
             }
         }
 
@@ -75,14 +83,16 @@ class DiagnosticController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'title'         => 'required|string',
-            'description'   => 'nullable|string',
-            'questions'     => 'required|array',
-            'questions.*'   => 'required|string',
-            'tenants'       => 'required|array',
-            'tenants.*'     => 'exists:tenants,id',
-            'start'         => 'required|date',
-            'end'           => 'required|date|after_or_equal:start'
+            'title'                  => 'required|string',
+            'description'            => 'nullable|string',
+            'questions'              => 'required|array',
+            'questions.*.text'       => 'required|string',
+            'questions.*.category'   => 'required|string',
+            'questions.*.target'     => 'required|in:admin,user',
+            'tenants'                => 'required|array',
+            'tenants.*'              => 'exists:tenants,id',
+            'start'                  => 'required|date',
+            'end'                    => 'required|date|after_or_equal:start'
         ]);
 
         $diagnostic = Diagnostic::create([
@@ -92,8 +102,12 @@ class DiagnosticController extends Controller
         
         $diagnostic->tenants()->sync($request->tenants);
 
-        foreach ($request->questions as $text) {
-            $diagnostic->questions()->create(['text' => $text]);
+        foreach ($request->questions as $q) {
+            $diagnostic->questions()->create([
+                'text' => $q['text'],
+                'category' => $q['category'],
+                'target' => $q['target']
+            ]);
         }
 
         foreach ($request->tenants as $tenantId) {
@@ -134,16 +148,18 @@ class DiagnosticController extends Controller
         $diagnostic = Diagnostic::with('periods')->findOrFail($id);
 
         $request->validate([
-            'title'          => 'required|string',
-            'description'    => 'nullable|string',
-            'questions'      => 'required|array',
-            'questions.*'    => 'required|string',
-            'tenants'        => 'required|array',
-            'tenants.*'      => 'exists:tenants,id',
-            'question_ids'   => 'array',
-            'question_ids.*' => 'nullable|integer|exists:questions,id',
-            'start'          => 'required|date',
-            'end'            => 'required|date|after_or_equal:start'
+            'title'                => 'required|string',
+            'description'          => 'nullable|string',
+            'questions'            => 'required|array',
+            'questions.*.text'     => 'required|string',
+            'questions.*.category' => 'required|string',
+            'questions.*.target'   => 'required|in:admin,user',
+            'tenants'              => 'required|array',
+            'tenants.*'            => 'exists:tenants,id',
+            'question_ids'         => 'array',
+            'question_ids.*'       => 'nullable|integer|exists:questions,id',
+            'start'                => 'required|date',
+            'end'                  => 'required|date|after_or_equal:start'
         ]);
 
         $diagnostic->update([
@@ -158,14 +174,22 @@ class DiagnosticController extends Controller
         $existingQuestionIds = $diagnostic->questions()->pluck('id')->toArray();
         $processedIds = [];
 
-        foreach ($submittedQuestions as $index => $text) {
+        foreach ($request->questions as $index => $questionData) {
             $questionId = $submittedQuestionIds[$index] ?? null;
 
             if ($questionId && in_array($questionId, $existingQuestionIds)) {
-                $diagnostic->questions()->find($questionId)?->update(['text' => $text]);
+                $diagnostic->questions()->find($questionId)?->update([
+                    'text' => $questionData['text'],
+                    'category' => $questionData['category'],
+                    'target' => $questionData['target']
+                ]);
                 $processedIds[] = $questionId;
             } else {
-                $new = $diagnostic->questions()->create(['text' => $text]);
+                $new = $diagnostic->questions()->create([
+                    'text' => $questionData['text'],
+                    'category' => $questionData['category'],
+                    'target' => $questionData['target']
+                ]);
                 $processedIds[] = $new->id;
             }
         }
@@ -215,22 +239,41 @@ class DiagnosticController extends Controller
 
     public function showAnswerForm(string $id) {
         $user = Auth::user();
-        $diagnostic = Diagnostic::with('questions', 'tenants')->findOrFail($id);
+        $role = $user->role;
 
-        if ($user->role !== 'admin' || !$diagnostic->tenants->contains('id', $user->tenant_id)) {
+        $diagnostic = Diagnostic::with([
+            'questions' => function ($query) use ($role) {
+                $query->where('target', $role);
+            },
+            'tenants',
+            'periods'
+        ])->findOrFail($id);
+
+        if (!$diagnostic->tenants->contains('id', $user->tenant_id)) {
             abort(403, 'Você não tem permissão para acessar esse diagnóstico.');
         }
 
-        $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+        $currentPeriod = $diagnostic->periods()
             ->where('tenant_id', $user->tenant_id)
+            ->whereDate('start', '<=', now())
+            ->whereDate('end', '>=', now())
+            ->first();
+            
+        if (!$currentPeriod) {
+            return redirect()->route('diagnostico.index')->with('error', 'Este diagnóstico não está disponível no momento.');    
+        }
+
+        $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+            ->where('diagnostic_period_id', $currentPeriod->id)
+            ->where('user_id', $user->id)
             ->exists();
 
         if ($alreadyAnswered) {
             return redirect()->route('diagnostico.index')
-                ->with('error', 'Este diagnóstico já foi respondido pela empresa.');
+                ->with('error', 'Você já respondeu este diagnóstico.');
         }
 
-        return view ('diagnostic.availables', compact('diagnostic'));
+        return view ('diagnostic.availables', compact('diagnostic', 'currentPeriod'));
     }
 
     public function submitAnswer(Request $request, string $id) {
@@ -251,6 +294,7 @@ class DiagnosticController extends Controller
         $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
             ->where('diagnostic_period_id', $currentPeriod->id)
             ->where('tenant_id', $user->tenant_id)
+            ->where('user_id', $user->id)
             ->exists();
 
         if ($alreadyAnswered) {
@@ -263,7 +307,10 @@ class DiagnosticController extends Controller
             'answers.*' => 'required|integer|min:1|max:5'
         ]);
 
-        $validQuestionIds = $diagnostic->questions->pluck('id')->toArray(); 
+        $validQuestionIds = $diagnostic->questions()
+            ->where('target', $user->role)
+            ->pluck('id')
+            ->toArray(); 
 
         foreach ($request->answers as $questionId => $note) {
             if (!in_array($questionId, $validQuestionIds)) {

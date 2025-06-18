@@ -14,31 +14,35 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 
 Route::middleware(['auth'])->group(function () {
-    Route::resource('/dashboard', DashboardController::class);    
+    Route::resource('/dashboard', DashboardController::class);  
+
     Route::get('/usuario', [UserController::class, 'index'])->name('usuario.index');
     Route::get('/usuario/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
     Route::patch('/usuario/{usuario}', [UserController::class, 'update'])->name('usuario.update');
+
+    Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
+    Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
+    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
 });
 
 Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::resource('/empresa', TenantController::class);
+
     Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
     Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
     Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
     Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
     Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
-    Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');
+    Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');
-    Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
-    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
+    // Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
 });
 
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
-    Route::post('/usuario', [UserController::class, 'store'])->name('usuario.store');
     Route::get('/usuario/create', [UserController::class, 'create'])->name('usuario.create');
-    Route::delete('/usuario/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');
-    Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
+    Route::post('/usuario', [UserController::class, 'store'])->name('usuario.store');
+
+    Route::delete('/usuario/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
 });

@@ -19,7 +19,7 @@ class Diagnostic extends Model
     }
 
     public function tenants() {
-        return $this->belongsToMany(Tenant::class, 'diagnostic_tenant');
+        return $this->belongsToMany(Tenant::class);
     }
 
     public function periods() {
