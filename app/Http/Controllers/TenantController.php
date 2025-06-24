@@ -79,7 +79,7 @@ class TenantController extends Controller
      */
     public function destroy(string $id)
     {
-        $empresa = Tenant::findOrFail($id);
+        $empresa = Tenant::with('users', 'diagnostics')->findOrFail($id);
 
         $empresa->delete();
 

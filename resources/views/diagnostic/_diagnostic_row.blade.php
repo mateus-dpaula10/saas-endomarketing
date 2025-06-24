@@ -10,29 +10,26 @@
         @endforeach
     </td>
     <td>{{ $diagnostic->created_at->format('d/m/Y') }}</td>
-    <td class="d-flex gap-1 align-items-center">
-        @php
-            $user = auth()->user();
-            $hasRelationWithTenant = $diagnostic->tenants->contains('id', $user->tenant_id);   
+    @php 
+        $user = auth()->user();
 
-            $currentPeriod = $diagnostic->periods
-                ->where('tenant_id', $user->tenant_id)
-                ->filter(fn($p) => now()->between(Carbon\Carbon::parse($p->start), Carbon\Carbon::parse($p->end)))
-                ->first();
+        $currentPeriod = $diagnostic->periods
+            ->where('tenant_id', $user->tenant_id)
+            ->filter(fn($p) => now()->between(Carbon\Carbon::parse($p->start), Carbon\Carbon::parse($p->end)))
+            ->first();
 
-            $hasAnswered = $currentPeriod
-                ? $diagnostic->answers
-                    ->where('diagnostic_period_id', $currentPeriod->id)
-                    ->where('user_id', $user->id)
-                    ->isNotEmpty()
-                : false;
-        @endphp
+        $hasAnswered = $currentPeriod
+            ? $diagnostic->answers
+                ->where('diagnostic_period_id', $currentPeriod->id)
+                ->where('user_id', $user->id)
+                ->isNotEmpty()
+            : false;
 
-        @if (in_array($user->role, ['admin', 'user']) && $hasRelationWithTenant)
-            @php
-                $hasQuestions = $diagnostic->questions->isNotEmpty();
-            @endphp
+        $hasQuestions = $diagnostic->questions->isNotEmpty();
+    @endphp
 
+    @if ($user->role === 'admin')
+        <td>        
             @if ($currentPeriod && !$hasAnswered && $hasQuestions)
                 <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
             @elseif ($hasAnswered)
@@ -42,9 +39,9 @@
             @else
                 <span class="text-muted">Fora do período</span>
             @endif
-        @endif
-
-        @if ($user->role === 'superadmin')
+        </td>        
+    @elseif ($user->role === 'superadmin')
+        <td>
             <a href="{{ route('diagnostico.edit', $diagnostic->id) }}" class="btn btn-warning btn-sm">Editar</a>
             <form action="{{ route('diagnostico.destroy', $diagnostic->id) }}" method="POST" class="d-inline">
                 @csrf @method('DELETE')
@@ -58,6 +55,22 @@
                     </button>
                 </form>
             @endif
-        @endif
-    </td>
+        </td>
+    @elseif ($user->role === 'user')
+        <td>
+            @if ($currentPeriod && !$hasAnswered && $hasQuestions)
+                <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
+            @elseif ($hasAnswered)
+                <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{$diagnostic->id}}">
+                    Visualizar respostas
+                </button>
+            @else
+                <span class="text-muted">Fora do período</span>
+            @endif
+        </td>
+    @else
+        <td>
+            Nenhuma ação
+        </td>
+    @endif
 </tr>
