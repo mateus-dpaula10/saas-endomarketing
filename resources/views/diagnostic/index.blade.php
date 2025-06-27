@@ -79,15 +79,17 @@
             @if (auth()->user()->role === 'admin')
                 @foreach ($diagnostics as $diagnostic)
                     @php
-                        $respostas = \App\Models\Answer::with('question')
+                        $respostasAgrupadas = \App\Models\Answer::with('question')
                             ->where('diagnostic_id', $diagnostic->id)
                             ->where('tenant_id', auth()->user()->tenant_id)
-                            ->get();
+                            ->get()
+                            ->groupBy('question_id');
 
-                        $notas = $respostas->pluck('note');
-                        $media = $notas->avg();
+                        $mediaGeral = $respostasAgrupadas
+                            ->map(fn ($group) => $group->avg('note'))
+                            ->avg();
 
-                        $planoGeral = planoAcao(round($media));
+                        $planoGeral = planoAcao(round($mediaGeral));
                     @endphp
 
                     <div class="modal fade" id="respostasModal-{{ $diagnostic->id }}" tabindex="-1" aria-labelledby="respostasModalLabel-{{ $diagnostic->id }}" aria-hidden="true">
@@ -98,11 +100,16 @@
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                 </div>
                                 <div class="modal-body">
-                                    @forelse ($respostas as $resposta)
+                                    @forelse ($respostasAgrupadas as $questionId => $respostas)
+                                        @php
+                                            $primeiraResposta = $respostas->first();
+                                            $mediaNota = $respostas->avg('note');
+                                        @endphp
+
                                         <div class="mb-3">
-                                            <strong>{{ $resposta->question->text }}</strong>
-                                            <p class="mb-0">Nota: <strong>{{ number_format($resposta->note, 2) }}</strong></p>
-                                            <p class="text-muted"><em>{{ planoAcao($resposta->note) }}</em></p>
+                                            <strong>{{ $primeiraResposta->question->text }}</strong>
+                                            <p class="mb-0">Média das notas: <strong>{{ number_format($mediaNota, 2) }}</strong></p>
+                                            <p class="text-muted"><em>{{ planoAcao($mediaNota) }}</em></p>
                                         </div>
                                         <hr>
                                     @empty
@@ -110,7 +117,7 @@
                                     @endforelse
 
                                     <div class="bg-warning p-3 rounded-2">
-                                        <strong>Média geral: {{ number_format($media, 2) }}</strong><br>
+                                        <strong>Média geral: {{ number_format($mediaGeral, 2) }}</strong><br>
                                         <span>{{ $planoGeral }}</span>
                                     </div>
                                 </div>

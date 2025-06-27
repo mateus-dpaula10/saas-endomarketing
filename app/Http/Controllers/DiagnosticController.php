@@ -31,7 +31,7 @@ class DiagnosticController extends Controller
         }
 
         $diagnostics = $diagnostics->with([
-            'periods', 
+            'periods.tenant', 
             'answers', 
             'tenants',
             'questions' => function ($query) use ($role) {
@@ -135,12 +135,22 @@ class DiagnosticController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
         $diagnostic = Diagnostic::with('questions', 'tenants', 'periods')->findOrFail($id);
-        $tenants = Tenant::all();
 
-        return view ('diagnostic.edit', compact('diagnostic', 'tenants'));
+        $linkedTenants = $diagnostic->tenants;
+        
+        $allTenants = Tenant::all();
+        
+        $tenantId = $request->get('tenant') ?? auth()->user()->tenant_id;
+
+        $lastPeriod = $diagnostic->periods
+            ->where('tenant_id', $tenantId)
+            ->sortByDesc('end')
+            ->first();
+
+        return view ('diagnostic.edit', compact('diagnostic', 'linkedTenants', 'allTenants', 'lastPeriod', 'tenantId'));
     }
 
     /**
@@ -148,9 +158,9 @@ class DiagnosticController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $diagnostic = Diagnostic::with('periods')->findOrFail($id);
+        $diagnostic = Diagnostic::with('periods', 'tenants')->findOrFail($id);
 
-        $request->validate([
+        $rules = [
             'title'                => 'required|string',
             'description'          => 'nullable|string',
             'questions'            => 'required|array',
@@ -161,37 +171,41 @@ class DiagnosticController extends Controller
             'tenants.*'            => 'exists:tenants,id',
             'question_ids'         => 'array',
             'question_ids.*'       => 'nullable|integer|exists:questions,id',
-            'start'                => 'required|date',
-            'end'                  => 'required|date|after_or_equal:start'
-        ]);
+            'tenant_ids'           => 'required|array',
+        ];
+
+        foreach ($request->input('tenant_ids', []) as $tenantId) {
+            $rules["start.$tenantId"] = 'required|date';
+            $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
+        }
+
+        $request->validate($rules);
 
         $diagnostic->update([
             'title'       => $request->title,
-            'description' => $request->description
+            'description' => $request->description,
         ]);
 
-        $diagnostic->tenants()->sync($request->tenants);
-
-        $submittedQuestions  = $request->input('questions', []);
+        $submittedQuestions = $request->input('questions', []);
         $submittedQuestionIds = $request->input('question_ids', []);
         $existingQuestionIds = $diagnostic->questions()->pluck('id')->toArray();
         $processedIds = [];
 
-        foreach ($request->questions as $index => $questionData) {
+        foreach ($submittedQuestions as $index => $questionData) {
             $questionId = $submittedQuestionIds[$index] ?? null;
 
             if ($questionId && in_array($questionId, $existingQuestionIds)) {
                 $diagnostic->questions()->find($questionId)?->update([
-                    'text' => $questionData['text'],
+                    'text'     => $questionData['text'],
                     'category' => $questionData['category'],
-                    'target' => $questionData['target']
+                    'target'   => $questionData['target'],
                 ]);
                 $processedIds[] = $questionId;
             } else {
                 $new = $diagnostic->questions()->create([
-                    'text' => $questionData['text'],
+                    'text'     => $questionData['text'],
                     'category' => $questionData['category'],
-                    'target' => $questionData['target']
+                    'target'   => $questionData['target'],
                 ]);
                 $processedIds[] = $new->id;
             }
@@ -202,30 +216,46 @@ class DiagnosticController extends Controller
             $diagnostic->questions()->whereIn('id', $toDelete)->delete();
         }
 
-        foreach ($request->tenants as $tenantId) {
-            $start = Carbon::parse($request->start);
-            $end   = Carbon::parse($request->end);
+        $selectedTenantIds = $request->input('tenants', []);
+        $tenantIdsFromForm = $request->input('tenant_ids', []);
+        $starts = $request->input('start', []);
+        $ends = $request->input('end', []);
 
-            $existingPeriod = $diagnostic->periods()->where('tenant_id', $tenantId)->first();
+        $currentTenantIds = $diagnostic->tenants()->pluck('tenants.id')->toArray();
+        $removedTenantIds = array_diff($currentTenantIds, $selectedTenantIds);
 
-            if ($existingPeriod) {
-                $existingStart = Carbon::parse($existingPeriod->start);
-                $existingEnd   = Carbon::parse($existingPeriod->end);
+        if (!empty($removedTenantIds)) {
+            $diagnostic->tenants()->detach($removedTenantIds);
+            $diagnostic->periods()->whereIn('tenant_id', $removedTenantIds)->delete();
+        }
 
-                $isDifferent = !$existingStart->equalTo($start) || !$existingEnd->equalTo($end);
+        $diagnostic->tenants()->sync($selectedTenantIds);
 
-                if (!$isDifferent) {
-                    $existingPeriod->update([
+        foreach ($tenantIdsFromForm as $tenantId) {
+            if (!in_array($tenantId, $selectedTenantIds)) {
+                continue;
+            }
+
+            $start = isset($starts[$tenantId]) ? Carbon::parse($starts[$tenantId]) : null;
+            $end = isset($ends[$tenantId]) ? Carbon::parse($ends[$tenantId]) : null;
+
+            if ($start && $end) {
+                $period = $diagnostic->periods()
+                    ->where('tenant_id', $tenantId)
+                    ->first();
+
+                if ($period) {
+                    $period->update([
                         'start' => $start,
-                        'end'   => $end
+                        'end'   => $end,
+                    ]);
+                } else {
+                    $diagnostic->periods()->create([
+                        'tenant_id' => $tenantId,
+                        'start'     => $start,
+                        'end'       => $end,
                     ]);
                 }
-            } else {
-                $diagnostic->periods()->create([
-                    'tenant_id' => $tenantId,
-                    'start'     => $start,
-                    'end'       => $end
-                ]);
             }
         }
 
@@ -366,23 +396,20 @@ class DiagnosticController extends Controller
             ? Carbon::parse($lastPeriod->end)->addDay()
             : now()->startOfDay();
 
-        $end = $start->copy()->addDays(30);
+        $end = $start->copy()->addDays(7);
 
-        $alreadyExists = $diagnostic->periods()
-            ->where('tenant_id', $tenantId)
-            ->whereDate('start', $start)
-            ->whereDate('end', $end)
-            ->exists();
-
-        if ($alreadyExists) {
-            return back()->with('info', 'Esse período já está configurado para essa empresa.');
+        if ($lastPeriod) {
+            $lastPeriod->update([
+                'start' => $start,
+                'end'   => $end
+            ]);
+        } else {
+            $diagnostic->periods()->create([
+                'start'     => $start,
+                'end'       => $end,
+                'tenant_id' => $tenantId
+            ]);
         }
-
-        $diagnostic->periods()->create([
-            'start'     => $start,
-            'end'       => $end,
-            'tenant_id' => $tenantId
-        ]);
 
         return back()->with('success', 'Novo período de resposta liberado!');
     }

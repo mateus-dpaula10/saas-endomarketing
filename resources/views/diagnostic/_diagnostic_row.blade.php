@@ -2,12 +2,45 @@
     <td>{{ $diagnostic->title }}</td>
     <td>{{ $diagnostic->description }}</td>
     <td>
-        @foreach ($diagnostic->periods as $period)
-            <div>
-                {{ \Carbon\Carbon::parse($period->start)->format('d/m/Y') }} até
-                {{ \Carbon\Carbon::parse($period->end)->format('d/m/Y') }}
-            </div>
-        @endforeach
+        @php
+            $user = auth()->user();
+        @endphp
+
+        @if ($user->role === 'superadmin')
+            @php
+                $periodsByTenant = $diagnostic->periods->groupBy('tenant_id');
+            @endphp
+
+            @foreach ($periodsByTenant as $tenantId => $periods)
+                @php
+                    $lastPeriod = $periods->sortByDesc('end')->first();
+                @endphp
+
+                @if ($lastPeriod)
+                    <div class="mb-2">
+                        <strong>{{ $lastPeriod->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
+                        {{ \Carbon\Carbon::parse($lastPeriod->start)->format('d/m/Y') }} até
+                        {{ \Carbon\Carbon::parse($lastPeriod->end)->format('d/m/Y') }}
+                    </div>
+                @endif
+            @endforeach
+        @else
+            @php
+                $tenantId = $user->tenant_id;
+                $periods = $diagnostic->periods->where('tenant_id', $tenantId);
+                $lastPeriod = $periods->sortByDesc('end')->first();
+            @endphp
+
+            @if ($lastPeriod)
+                <div>
+                    <strong>{{ $lastPeriod->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
+                    {{ \Carbon\Carbon::parse($lastPeriod->start)->format('d/m/Y') }} até
+                    {{ \Carbon\Carbon::parse($lastPeriod->end)->format('d/m/Y') }}
+                </div>
+            @else 
+                <div>Sem período para sua empresa</div>
+            @endif
+        @endif    
     </td>
     <td>{{ $diagnostic->created_at->format('d/m/Y') }}</td>
     @php 
@@ -29,30 +62,39 @@
     @endphp
 
     @if ($user->role === 'admin')
-        <td>        
-            @if ($currentPeriod && !$hasAnswered && $hasQuestions)
-                <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
-            @elseif ($hasAnswered)
+        <td>              
+            @if ($hasAnswered)
                 <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{$diagnostic->id}}">
                     Visualizar respostas
                 </button>
-            @else
+            @endif
+
+            @if ($currentPeriod && !$hasAnswered && $hasQuestions)
+                <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
+            @elseif (!$hasAnswered && !$currentPeriod)
                 <span class="text-muted">Fora do período</span>
             @endif
         </td>        
     @elseif ($user->role === 'superadmin')
         <td>
-            <a href="{{ route('diagnostico.edit', $diagnostic->id) }}" class="btn btn-warning btn-sm">Editar</a>
+            @if ($diagnostic->tenants->isNotEmpty())
+                @php $firstTenantId = $diagnostic->tenants->first()->id; @endphp
+                <a href="{{ route('diagnostico.edit', ['diagnostico' => $diagnostic->id, 'tenant' => $firstTenantId]) }}" class="btn btn-warning btn-sm">Editar</a>
+            @endif
             <form action="{{ route('diagnostico.destroy', $diagnostic->id) }}" method="POST" class="d-inline">
                 @csrf @method('DELETE')
                 <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
             </form>
             @if ($diagnostic->tenants->isNotEmpty())
-                <form action="{{ route('diagnostico.reabrir', ['id' => $diagnostic->id, 'tenant' => $diagnostic->tenants->first()->id]) }}" method="POST" class="d-inline">
+                <form action="{{ route('diagnostico.reabrir', ['id' => $diagnostic->id]) }}" method="POST" class="d-inline">
                     @csrf
-                    <button type="submit" class="btn btn-success btn-sm">
-                        Liberar novo período {{ $diagnostic->tenants->first()->name }}
-                    </button>
+                    <select name="tenant" class="form-select form-select-sm d-inline w-auto" required>
+                        <option value="" disabled selected>Escolha a empresa</option>
+                        @foreach ($diagnostic->tenants as $tenant)
+                            <option value="{{ $tenant->id }}">{{ $tenant->nome }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="btn btn-success btn-sm">Liberar período</button>
                 </form>
             @endif
         </td>
