@@ -22,51 +22,72 @@ class DiagnosticController extends Controller
         $role = $user->role;
         $tenantId = $user->tenant_id;
 
-        $diagnostics = Diagnostic::query();
+        $diagnosticsQuery = Diagnostic::query();
 
-        if ($user->role !== 'superadmin') {
-            $diagnostics->whereHas('tenants', function ($query) use ($tenantId) {
+        if ($role !== 'superadmin') {
+            $diagnosticsQuery->whereHas('tenants', function ($query) use ($tenantId) {
                 $query->where('tenants.id', $tenantId);
             });
         }
 
-        $diagnostics = $diagnostics->with([
-            'periods.tenant', 
-            'answers', 
-            'tenants',
-            'questions' => function ($query) use ($role) {
-                $query->where('target', $role);
-            }
-        ])
-        ->get();
+        $diagnostics = $diagnosticsQuery->with([
+            'periods' => function ($query) use ($tenantId, $role) {
+                if ($role !== 'superadmin') {
+                    $query->where('tenant_id', $tenantId);
+                }
+            },
+            'periods.tenant',
+            'tenants' => function ($query) use ($tenantId, $role) {
+                if ($role !== 'superadmin') {
+                    $query->where('tenants.id', $tenantId);
+                }
+            },
+            'questions'
+        ])->get();
 
-        $availableDiagnostics = collect();
-        
+        $diagnosticData = collect();
+
         foreach ($diagnostics as $diagnostic) {
             $period = $diagnostic->periods
-                ->where('tenant_id', $tenantId)
-                ->filter(fn($p) => $now->between(Carbon::parse($p->start), Carbon::parse($p->end)))
+                ->filter(fn($p) => 
+                    $p->tenant_id == $tenantId &&
+                    $now->between(Carbon::parse($p->start), Carbon::parse($p->end))
+                )
                 ->first();
-            
-            if (!$period) {
-                continue;
+
+            $questionsForUser = $diagnostic->questions->where('target', $role);
+
+            $hasQuestions = $questionsForUser->isNotEmpty();
+            $hasAnswered = false;
+
+            if ($period && $hasQuestions) {
+                $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('diagnostic_period_id', $period->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
             }
 
-            $alreadyAnswered = $diagnostic->answers
+            $hasAnsweredAnyPeriod = Answer::where('diagnostic_id', $diagnostic->id)
                 ->where('user_id', $user->id)
-                ->where('diagnostic_period_id', $period->id)
-                ->isNotEmpty();
+                ->exists();
 
-            if (!$alreadyAnswered) {
-                $availableDiagnostics->push($diagnostic);
-            }
+            $isAvailable = $period && !$hasAnswered && $hasQuestions;
+
+            $diagnosticData->push([
+                'diagnostic'            => $diagnostic,
+                'period'                => $period,
+                'questions'             => $questionsForUser,
+                'hasQuestions'          => $hasQuestions,
+                'hasAnswered'           => $hasAnswered,
+                'hasAnsweredAnyPeriod'  => $hasAnsweredAnyPeriod,
+                'isAvailable'           => $isAvailable,
+            ]);
         }
 
-        $diagnosticsNotAvailable = $diagnostics->filter(fn($d) => !$availableDiagnostics->contains($d));
-
-        return view ('diagnostic.index', [
-            'availableDiagnostics' => $availableDiagnostics,
-            'diagnostics'          => $diagnosticsNotAvailable
+        return view('diagnostic.index', [
+            'user'                  => $user,
+            'availableDiagnostics'  => $diagnosticData->where('isAvailable', true),
+            'diagnostics'           => $diagnosticData->where('isAvailable', false)
         ]);
     }
 
@@ -142,15 +163,24 @@ class DiagnosticController extends Controller
         $linkedTenants = $diagnostic->tenants;
         
         $allTenants = Tenant::all();
-        
-        $tenantId = $request->get('tenant') ?? auth()->user()->tenant_id;
 
-        $lastPeriod = $diagnostic->periods
-            ->where('tenant_id', $tenantId)
-            ->sortByDesc('end')
-            ->first();
+        $periodsByTenant = [];
 
-        return view ('diagnostic.edit', compact('diagnostic', 'linkedTenants', 'allTenants', 'lastPeriod', 'tenantId'));
+        foreach ($linkedTenants as $tenant) {
+            $lastPeriod = $diagnostic->periods
+                ->where('tenant_id', $tenant->id)
+                ->sortByDesc('end')
+                ->first();
+
+            $periodsByTenant[$tenant->id] = $lastPeriod;
+        }
+
+        return view('diagnostic.edit', compact(
+            'diagnostic',
+            'linkedTenants',
+            'allTenants',
+            'periodsByTenant'
+        ));
     }
 
     /**
@@ -226,8 +256,14 @@ class DiagnosticController extends Controller
 
         if (!empty($removedTenantIds)) {
             $diagnostic->tenants()->detach($removedTenantIds);
+
             $diagnostic->periods()->whereIn('tenant_id', $removedTenantIds)->delete();
+
+            Answer::where('diagnostic_id', $diagnostic->id)
+                ->whereIn('tenant_id', $removedTenantIds)
+                ->delete(); 
         }
+
 
         $diagnostic->tenants()->sync($selectedTenantIds);
 
@@ -275,7 +311,7 @@ class DiagnosticController extends Controller
     }
 
     // public function available() {
-    //     $diagnostics = Diagnostic::whereNull('tenant_id')->with('questions')->get();
+    //     $diagnosticsQuery = Diagnostic::whereNull('tenant_id')->with('questions')->get();
 
     //     return view ('diagnostic.availables', compact('diagnostics'));
     // }
@@ -296,10 +332,9 @@ class DiagnosticController extends Controller
             abort(403, 'Você não tem permissão para acessar esse diagnóstico.');
         }
 
-        $currentPeriod = $diagnostic->periods()
+        $currentPeriod = $diagnostic->periods
             ->where('tenant_id', $user->tenant_id)
-            ->whereDate('start', '<=', now())
-            ->whereDate('end', '>=', now())
+            ->filter(fn($p) => now()->between(Carbon::parse($p->start), Carbon::parse($p->end)))
             ->first();
             
         if (!$currentPeriod) {
@@ -396,21 +431,14 @@ class DiagnosticController extends Controller
             ? Carbon::parse($lastPeriod->end)->addDay()
             : now()->startOfDay();
 
-        $end = $start->copy()->addDays(7);
+        $end =  (clone $start)->addDays(7);
 
-        if ($lastPeriod) {
-            $lastPeriod->update([
-                'start' => $start,
-                'end'   => $end
-            ]);
-        } else {
-            $diagnostic->periods()->create([
-                'start'     => $start,
-                'end'       => $end,
-                'tenant_id' => $tenantId
-            ]);
-        }
-
+        $diagnostic->periods()->create([
+            'start'     => $start,
+            'end'       => $end,
+            'tenant_id' => $tenantId
+        ]);
+        
         return back()->with('success', 'Novo período de resposta liberado!');
     }
 }

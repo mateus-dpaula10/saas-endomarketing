@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (alert) {
             setTimeout(() => {
                 alert.style.display = 'none'
-            }, 3000)
+            }, 5000)
         }
     })
 })

@@ -56,7 +56,7 @@
                     <div id="periods-container" class="mt-4">
                         @foreach ($diagnostic->tenants as $tenant)
                             @php
-                                $period = $diagnostic->periods->firstWhere('tenant_id', $tenant->id);
+                                $period = $periodsByTenant[$tenant->id] ?? null;
                             @endphp
                             <div class="period-block border rounded p-3 mb-3" data-tenant-id="{{ $tenant->id }}">
                                 <h6>{{ $tenant->nome }}</h6>
@@ -154,6 +154,10 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const tenantLastPeriods = @json($periodsByTenant);
+    </script>
 @endsection
 
 @push('scripts')
@@ -237,6 +241,12 @@
 
                         endInput.name = `end[${tenantId}]`
                         endInput.required = true
+
+                        const period = tenantLastPeriods[tenantId]
+                        if (period) {
+                            startInput.value = period.start
+                            endInput.value = period.end
+                        }
 
                         periodsContainer.appendChild(block)
                     }

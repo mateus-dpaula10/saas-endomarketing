@@ -25,4 +25,8 @@ class Answer extends Model
     public function period() {
         return $this->belongsTo(DiagnosticPeriod::class, 'diagnostic_period_id');
     }
+
+    public function user() {
+        return $this->belongsTo(User::class);
+    }
 }
