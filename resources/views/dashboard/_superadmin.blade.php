@@ -15,7 +15,6 @@
 <div class="tab-content mt-3">
     @foreach($analisesPorEmpresa as $empresa => $dados)
         <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="grafico-{{ $loop->index }}" role="tabpanel">
-            {{-- <canvas id="graficoEmpresa{{ $loop->index }}" height="400"></canvas> --}}
             <canvas id="graficoEmpresa{{ $loop->index }}" width="1000" height="400"></canvas>
 
             <script>
@@ -23,7 +22,13 @@
                     const dados = {!! json_encode($dados) !!};
                     const todosPeriodos = [...new Set(
                         Object.values(dados).flatMap(c => Object.keys(c))
-                    )].sort();
+                    )].sort((a, b) => {
+                        const [dA, mA, yA] = a.split(' - ')[0].split('/');
+                        const [dB, mB, yB] = b.split(' - ')[0].split('/');
+                        const dataA = new Date(`${yA}-${mA}-${dA}`);
+                        const dataB = new Date(`${yB}-${mB}-${dB}`);
+                        return dataA - dataB;
+                    });
 
                     const cores = [
                         '#ff6384', '#36a2eb', '#ffcd56', '#4bc0c0',

@@ -5,7 +5,13 @@
     const dadosCategorias = {!! json_encode($evolucaoCategorias) !!};
     const todosPeriodos = [...new Set(
         Object.values(dadosCategorias).flatMap(categoria => Object.keys(categoria))
-    )].sort();
+    )].sort((a, b) => {
+        const [dA, mA, yA] = a.split(' - ')[0].split('/');
+        const [dB, mB, yB] = b.split(' - ')[0].split('/');
+        const dataA = new Date(`${yA}-${mA}-${dA}`);
+        const dataB = new Date(`${yB}-${mB}-${dB}`);
+        return dataA - dataB;
+    });
 
     const gerarCor = (index) => {
         const cores = [
