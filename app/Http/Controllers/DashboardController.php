@@ -16,54 +16,76 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $tenantId = $user->tenant_id;
         $isAdmin = $user->role === 'admin';
-        
+        $isSuperAdmin = $user->role === 'superadmin';
+        $tenantId = $user->tenant_id;
+
+        $nomesCategorias = [
+            'comu_inte' => 'Comunicação interna',
+            'reco_valo' => 'Reconhecimento e Valorização',
+            'clim_orga' => 'Clima Organizacional',
+            'cult_orga' => 'Cultura Organizacional',
+            'dese_capa' => 'Desenvolvimento e Capacitação',
+            'lide_gest' => 'Liderança e Gestão',
+            'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
+            'pert_enga' => 'Pertencimento e Engajamento'
+        ];
+
+        if ($isSuperAdmin) {
+            $respostas = Answer::with(['question', 'period', 'tenant'])
+                ->get()
+                ->sortBy(fn($resposta) => $resposta->period->start ?? now());
+
+            if ($respostas->isEmpty()) {
+                return view('dashboard.index', ['semRespostas' => true]);
+            }
+
+            $respostasPorTenant = $respostas->groupBy(fn($r) => $r->tenant->nome ?? 'Empresa desconhecida');
+            $analisesPorEmpresa = [];
+
+            foreach ($respostasPorTenant as $nomeEmpresa => $respostasEmpresa) {
+                $grupoPorPeriodo = $respostasEmpresa->groupBy('diagnostic_period_id');
+                $dadosPorCategoria = [];
+
+                $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$dadosPorCategoria, $nomesCategorias) {
+                    $periodo = $grupoPeriodo->first()->period;
+                    $periodoLabel = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
+
+                    $grupoPeriodo->groupBy(fn($r) => $r->question->category)
+                        ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $periodoLabel, $nomesCategorias) {
+                            $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
+                            $media = round($grupoCategoria->avg('note'), 2);
+                            $dadosPorCategoria[$nomeLegivel][$periodoLabel] = $media;
+                        });
+                });
+
+                $analisesPorEmpresa[$nomeEmpresa] = $dadosPorCategoria;
+            }
+
+            return view('dashboard.index', [
+                'analisesPorEmpresa' => $analisesPorEmpresa
+            ]);
+        }
+
         if ($isAdmin) {
-            $nomesCategorias = [
-                'comu_inte' => 'Comunicação interna',
-                'reco_valo' => 'Reconhecimento e Valorização',
-                'clim_orga' => 'Clima Organizacional',
-                'cult_orga' => 'Cultura Organizacional',
-                'dese_capa' => 'Desenvolvimento e Capacitação',
-                'lide_gest' => 'Liderança e Gestão',
-                'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
-                'pert_enga' => 'Pertencimento e Engajamento'
-            ];
-    
             $respostas = Answer::with(['question', 'period'])
                 ->where('tenant_id', $tenantId)
-                ->get();
+                ->get()
+                ->sortBy(fn($resposta) => $resposta->period->start ?? now());
 
             if ($respostas->isEmpty()) {
                 return view('dashboard.index', [
                     'semRespostas' => true
                 ]);
             }
-    
+
             $grupoPorPeriodo = $respostas->groupBy('diagnostic_period_id');
-    
-            $respostasPorPeriodo = $grupoPorPeriodo->map(function ($grupoPeriodo) {
-                $periodo = $grupoPeriodo->first()->period;
-                $porCategoria = $grupoPeriodo->groupBy(fn($resposta) => $resposta->question->category);
-    
-                $mediasPorCategoria = $porCategoria->map(fn($grupoCategoria) => round($grupoCategoria->avg('note'), 2));
-    
-                return [
-                    'periodo' => $periodo,
-                    'categorias' => $mediasPorCategoria
-                ];
-            });
-    
             $dadosPorCategoria = [];
-    
+
             $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$dadosPorCategoria, $nomesCategorias) {
                 $periodo = $grupoPeriodo->first()->period;
-    
-                $periodoLabel = Carbon::parse($periodo->start)->format('d/m/Y') 
-                    . ' - ' 
-                    . Carbon::parse($periodo->end)->format('d/m/Y');
-    
+                $periodoLabel = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
+
                 $grupoPeriodo->groupBy(fn($resposta) => $resposta->question->category)
                     ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $periodoLabel, $nomesCategorias) {
                         $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
@@ -71,18 +93,16 @@ class DashboardController extends Controller
                         $dadosPorCategoria[$nomeLegivel][$periodoLabel] = $media;
                     });
             });
-    
+
             return view('dashboard.index', [
-                'dados' => $respostasPorPeriodo,
-                'evolucaoCategorias' => $dadosPorCategoria  
-            ]);
-        } else {
-            return view('dashboard.index', [
-                'mensagem' => 'Bem-vindo! Aqui você verá seus próximos passos ou lembretes da empresa.'
+                'evolucaoCategorias' => $dadosPorCategoria
             ]);
         }
-    }
 
+        return view('dashboard.index', [
+            'mensagem' => 'Bem-vindo! Aqui você verá seus próximos passos ou lembretes da empresa.'
+        ]);
+    }
 
     /**
      * Show the form for creating a new resource.
