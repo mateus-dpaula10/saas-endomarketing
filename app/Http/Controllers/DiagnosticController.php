@@ -7,6 +7,7 @@ use App\Models\Diagnostic;
 use Illuminate\Http\Request;
 use App\Models\Answer;
 use App\Models\Tenant;
+use App\Models\Question;
 use App\Models\DiagnosticPeriod;
 use Illuminate\Support\Facades\Auth;
 
@@ -98,7 +99,13 @@ class DiagnosticController extends Controller
     {
         $tenants = Tenant::all();
 
-        return view ('diagnostic.create', compact('tenants'));
+        $questions = Question::select('id', 'text', 'category')->get();
+
+        $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
+            return $items->map(fn($q) => ['id' => $q->id, 'text' => $q->text])->values();
+        });
+
+        return view ('diagnostic.create', compact('tenants', 'perguntasPorCategoria'));
     }
 
     /**
@@ -109,10 +116,14 @@ class DiagnosticController extends Controller
         $request->validate([
             'title'                  => 'required|string',
             'description'            => 'nullable|string',
-            'questions'              => 'required|array',
-            'questions.*.text'       => 'required|string',
-            'questions.*.category'   => 'required|string',
-            'questions.*.target'     => 'required|in:admin,user',
+            'questions_text'         => 'required|array',
+            'questions_text.*'       => 'nullable|exists:questions,id',
+            'questions_custom'       => 'array',
+            'questions_custom.*'     => 'nullable|string',
+            'questions_target'       => 'required|array',
+            'questions_target.*'     => 'required|in:admin,user',
+            'questions_category'     => 'required|array',
+            'questions_category.*'   => 'nullable|string',
             'tenants'                => 'required|array',
             'tenants.*'              => 'exists:tenants,id',
             'start'                  => 'required|date',
@@ -123,15 +134,29 @@ class DiagnosticController extends Controller
             'title'       => $request->title,
             'description' => $request->description
         ]);
-        
+
         $diagnostic->tenants()->sync($request->tenants);
 
-        foreach ($request->questions as $q) {
-            $diagnostic->questions()->create([
-                'text' => $q['text'],
-                'category' => $q['category'],
-                'target' => $q['target']
-            ]);
+        foreach ($request->questions_text as $index => $questionId) {
+            $text = null;
+            $target = $request->questions_target[$index] ?? null;
+            $category = $request->questions_category[$index] ?? null;
+
+            if ($questionId) {
+                $diagnostic->questions()->attach($questionId, ['target' => $target]);
+            } else {
+                $text = $request->questions_custom[$index] ?? null;
+
+                if ($text) {
+                    $newQuestion = Question::create([
+                        'text' => $text,
+                        'category' => $category,
+                        'target' => $target,
+                        'diagnostic_id' => $diagnostic->id,
+                    ]);
+                    $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
+                }
+            }
         }
 
         foreach ($request->tenants as $tenantId) {
@@ -160,26 +185,29 @@ class DiagnosticController extends Controller
     {
         $diagnostic = Diagnostic::with('questions', 'tenants', 'periods')->findOrFail($id);
 
-        $linkedTenants = $diagnostic->tenants;
-        
+        $linkedTenants = $diagnostic->tenants;        
         $allTenants = Tenant::all();
 
         $periodsByTenant = [];
-
         foreach ($linkedTenants as $tenant) {
             $lastPeriod = $diagnostic->periods
                 ->where('tenant_id', $tenant->id)
                 ->sortByDesc('end')
                 ->first();
-
             $periodsByTenant[$tenant->id] = $lastPeriod;
         }
+
+        $questions = Question::whereNull('diagnostic_id')->get();
+        $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
+            return $items->map(fn($q) => ['id' => $q->id, 'text' => $q->text])->values();
+        });
 
         return view('diagnostic.edit', compact(
             'diagnostic',
             'linkedTenants',
             'allTenants',
-            'periodsByTenant'
+            'periodsByTenant',
+            'perguntasPorCategoria'
         ));
     }
 
@@ -188,20 +216,20 @@ class DiagnosticController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $diagnostic = Diagnostic::with('periods', 'tenants')->findOrFail($id);
+        $diagnostic = Diagnostic::with(['questions', 'periods', 'tenants'])->findOrFail($id);
 
         $rules = [
-            'title'                => 'required|string',
-            'description'          => 'nullable|string',
-            'questions'            => 'required|array',
-            'questions.*.text'     => 'required|string',
-            'questions.*.category' => 'required|string',
-            'questions.*.target'   => 'required|in:admin,user',
-            'tenants'              => 'required|array',
-            'tenants.*'            => 'exists:tenants,id',
-            'question_ids'         => 'array',
-            'question_ids.*'       => 'nullable|integer|exists:questions,id',
-            'tenant_ids'           => 'required|array',
+            'title'          => 'required|string',
+            'description'    => 'nullable|string',
+            'questions_text' => 'required|array',
+            'questions_text.*' => 'nullable|exists:questions,id',
+            'questions_custom' => 'array',
+            'questions_custom.*' => 'nullable|string',
+            'questions_target'  => 'required|array',
+            'questions_target.*'=> 'required|in:admin,user',
+            'tenants'        => 'required|array',
+            'tenants.*'      => 'exists:tenants,id',
+            'tenant_ids'     => 'required|array',
         ];
 
         foreach ($request->input('tenant_ids', []) as $tenantId) {
@@ -216,82 +244,40 @@ class DiagnosticController extends Controller
             'description' => $request->description,
         ]);
 
-        $submittedQuestions = $request->input('questions', []);
-        $submittedQuestionIds = $request->input('question_ids', []);
-        $existingQuestionIds = $diagnostic->questions()->pluck('id')->toArray();
-        $processedIds = [];
+        $diagnostic->questions()->detach();
 
-        foreach ($submittedQuestions as $index => $questionData) {
-            $questionId = $submittedQuestionIds[$index] ?? null;
+        foreach ($request->questions_text as $index => $questionId) {
+            $target = $request->questions_target[$index] ?? 'admin';
+            $textCustom = $request->questions_custom[$index] ?? null;
 
-            if ($questionId && in_array($questionId, $existingQuestionIds)) {
-                $diagnostic->questions()->find($questionId)?->update([
-                    'text'     => $questionData['text'],
-                    'category' => $questionData['category'],
-                    'target'   => $questionData['target'],
+            if ($questionId) {
+                $diagnostic->questions()->attach($questionId, ['target' => $target]);
+            } elseif ($textCustom) {
+                $newQuestion = Question::create([
+                    'text' => $textCustom,
+                    'category' => null,
+                    'target' => $target,
+                    'diagnostic_id' => $diagnostic->id,
                 ]);
-                $processedIds[] = $questionId;
-            } else {
-                $new = $diagnostic->questions()->create([
-                    'text'     => $questionData['text'],
-                    'category' => $questionData['category'],
-                    'target'   => $questionData['target'],
-                ]);
-                $processedIds[] = $new->id;
+
+                $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
             }
-        }
-
-        $toDelete = array_diff($existingQuestionIds, $processedIds);
-        if (!empty($toDelete)) {
-            $diagnostic->questions()->whereIn('id', $toDelete)->delete();
         }
 
         $selectedTenantIds = $request->input('tenants', []);
-        $tenantIdsFromForm = $request->input('tenant_ids', []);
-        $starts = $request->input('start', []);
-        $ends = $request->input('end', []);
-
-        $currentTenantIds = $diagnostic->tenants()->pluck('tenants.id')->toArray();
-        $removedTenantIds = array_diff($currentTenantIds, $selectedTenantIds);
-
-        if (!empty($removedTenantIds)) {
-            $diagnostic->tenants()->detach($removedTenantIds);
-
-            $diagnostic->periods()->whereIn('tenant_id', $removedTenantIds)->delete();
-
-            Answer::where('diagnostic_id', $diagnostic->id)
-                ->whereIn('tenant_id', $removedTenantIds)
-                ->delete(); 
-        }
-
-
         $diagnostic->tenants()->sync($selectedTenantIds);
 
-        foreach ($tenantIdsFromForm as $tenantId) {
-            if (!in_array($tenantId, $selectedTenantIds)) {
-                continue;
-            }
+        foreach ($request->input('tenant_ids', []) as $tenantId) {
+            if (!in_array($tenantId, $selectedTenantIds)) continue;
 
-            $start = isset($starts[$tenantId]) ? Carbon::parse($starts[$tenantId]) : null;
-            $end = isset($ends[$tenantId]) ? Carbon::parse($ends[$tenantId]) : null;
+            $start = Carbon::parse($request->start[$tenantId] ?? null);
+            $end   = Carbon::parse($request->end[$tenantId] ?? null);
 
             if ($start && $end) {
-                $period = $diagnostic->periods()
-                    ->where('tenant_id', $tenantId)
-                    ->first();
-
-                if ($period) {
-                    $period->update([
-                        'start' => $start,
-                        'end'   => $end,
-                    ]);
-                } else {
-                    $diagnostic->periods()->create([
-                        'tenant_id' => $tenantId,
-                        'start'     => $start,
-                        'end'       => $end,
-                    ]);
-                }
+                $period = $diagnostic->periods()->firstOrNew(['tenant_id' => $tenantId]);
+                $period->start = $start;
+                $period->end   = $end;
+                $period->save();
             }
         }
 

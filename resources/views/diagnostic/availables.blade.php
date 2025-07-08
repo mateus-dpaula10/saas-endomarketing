@@ -32,6 +32,10 @@
                     <div class="card-body">
                         <p>{{ $diagnostic->description }}</p>
 
+                        @php
+                            $questions = $diagnostic->questions->where('target', Auth::user()->role);
+                        @endphp
+
                         @if ($diagnostic->questions->isEmpty())
                             <p class="text-muted bg-light p-3 rounded-1">Nenhuma pergunta disponível para seu perfil.</p>
                         @else
@@ -39,7 +43,7 @@
                                 @csrf
                                 <input type="hidden" name="diagnostic_period_id" value="{{ $currentPeriod->id }}">
 
-                                @foreach ($diagnostic->questions as $question)
+                                @foreach ($questions as $question)
                                     <div class="mb-3">
                                         <label class="form-label">{{ $question->text }}</label>
                                         <select name="answers[{{ $question->id }}]" class="form-select" required>

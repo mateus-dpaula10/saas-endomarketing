@@ -47,9 +47,9 @@
                     <div class="form-group mt-3">
                         <label for="" class="form-label">Perguntas</label>
                         <div id="questions-wrapper">
-                            <div class="question-block mb-3 border rounded p-3 position-relative">
+                            <div class="question-block mb-3 border rounded p-3 position-relative" data-index="0">
                                 <label class="form-label">Categoria</label>
-                                <select name="questions[0][category]" class="form-select mb-2" required>
+                                <select name="questions_category[0]" class="form-select mb-2" onchange="atualizarPerguntas(this, 0)" required>
                                     <option value="">Selecione uma categoria</option>
                                     <option value="comu_inte">Comunicação Interna</option>
                                     <option value="reco_valo">Reconhecimento e Valorização</option>
@@ -62,10 +62,14 @@
                                 </select>
 
                                 <label class="form-label">Texto da pergunta</label>
-                                <input type="text" name="questions[0][text]" class="form-control mb-2" placeholder="Digite a pergunta" required>
+                                <select name="questions_text[0]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, 0)">
+                                    <option value="">Digite outra pergunta...</option>
+                                </select>
+
+                                <input type="text" name="questions_custom[0]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
 
                                 <label class="form-label">Público-alvo</label>
-                                <select name="questions[0][target]" class="form-select" required>
+                                <select name="questions_target[0]" class="form-select" required>
                                     <option value="">Selecione o público</option>
                                     <option value="admin">Administrador</option>
                                     <option value="user">Colaborador</option>
@@ -86,14 +90,15 @@
 
 @push('scripts')
     <script>
-        let questionIndex = 1
+        const perguntasPorCategoria = @json($perguntasPorCategoria);
+
+        let questionIndex = 1;
 
         function addQuestion() {
-            const wrapper = document.getElementById('questions-wrapper')
-
-            const block = document.createElement('div')
-            block.className = 'question-block mb-3 border rounded p-3 position-relative'
-            block.setAttribute('data-index', questionIndex)
+            const wrapper = document.getElementById('questions-wrapper');
+            const block = document.createElement('div');
+            block.className = 'question-block mb-3 border rounded p-3 position-relative';
+            block.setAttribute('data-index', questionIndex);
 
             block.innerHTML = `
                 <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">
@@ -101,7 +106,7 @@
                 </button>
 
                 <label class="form-label">Categoria</label>
-                <select name="questions[${questionIndex}][category]" class="form-select mb-2" required>
+                <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
                     <option value="">Selecione uma categoria</option>
                     <option value="comu_inte">Comunicação Interna</option>
                     <option value="reco_valo">Reconhecimento e Valorização</option>
@@ -114,22 +119,57 @@
                 </select>
 
                 <label class="form-label">Texto da pergunta</label>
-                <input type="text" name="questions[${questionIndex}][text]" class="form-control mb-2" placeholder="Digite a pergunta" required>
+                <select name="questions_text[${questionIndex}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, ${questionIndex})">
+                    <option value="">Digite outra pergunta...</option>
+                </select>
+
+                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
 
                 <label class="form-label">Público-alvo</label>
-                <select name="questions[${questionIndex}][target]" class="form-select" required>
+                <select name="questions_target[${questionIndex}]" class="form-select" required>
                     <option value="">Selecione o público</option>
                     <option value="admin">Administrador</option>
                     <option value="user">Colaborador</option>
                 </select>
-            `
-            wrapper.appendChild(block)
-            questionIndex++
+            `;
+            wrapper.appendChild(block);
+            questionIndex++;
         }
 
         function removeQuestion(button) {
-            const block = button.closest('.question-block')
-            block.remove()
+            const block = button.closest('.question-block');
+            block.remove();
+        }
+
+        function atualizarPerguntas(select, index) {
+            const categoria = select.value;
+            const perguntas = perguntasPorCategoria[categoria] || [];
+
+            const questionSelect = document.querySelector(`select[name="questions_text[${index}]"]`);
+            const questionInput = document.querySelector(`input[name="questions_custom[${index}]"]`);
+
+            questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
+
+            perguntas.forEach(pergunta => {
+                const option = document.createElement('option');
+                option.value = pergunta.id;
+                option.textContent = pergunta.text;
+                questionSelect.appendChild(option);
+            });
+
+            questionSelect.classList.remove('d-none');
+            questionInput.classList.add('d-none');
+            questionInput.value = '';
+        }
+
+        function handleQuestionChange(select, index) {
+            const input = document.querySelector(`input[name="questions_custom[${index}]"]`);
+            if (select.value === '') {
+                input.classList.remove('d-none');
+            } else {
+                input.classList.add('d-none');
+                input.value = '';
+            }
         }
     </script>
 @endpush

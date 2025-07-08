@@ -11,7 +11,7 @@ class Diagnostic extends Model
     protected $fillable = ['tenant_id', 'title', 'description'];
 
     public function questions() {
-        return $this->hasMany(Question::class);
+        return $this->belongsToMany(Question::class)->withPivot('target')->withTimestamps();
     }
 
     public function answers() {

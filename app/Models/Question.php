@@ -10,7 +10,7 @@ class Question extends Model
     use HasFactory;
     protected $fillable = ['diagnostic_id', 'text', 'category', 'target'];
 
-    public function diagnostic() {
-        return $this->belongsTo(Diagnostic::class);
+    public function diagnostics() {
+        return $this->belongsToMany(Diagnostic::class)->withPivot('target')->withTimestamps();
     }
 }
