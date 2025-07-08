@@ -185,7 +185,7 @@ class DiagnosticController extends Controller
     {
         $diagnostic = Diagnostic::with('questions', 'tenants', 'periods')->findOrFail($id);
 
-        $linkedTenants = $diagnostic->tenants;        
+        $linkedTenants = $diagnostic->tenants;
         $allTenants = Tenant::all();
 
         $periodsByTenant = [];
@@ -198,8 +198,12 @@ class DiagnosticController extends Controller
         }
 
         $questions = Question::whereNull('diagnostic_id')->get();
+
         $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
-            return $items->map(fn($q) => ['id' => $q->id, 'text' => $q->text])->values();
+            return $items->map(fn($q) => [
+                'id' => $q->id,
+                'text' => $q->text
+            ])->values();
         });
 
         return view('diagnostic.edit', compact(
@@ -219,17 +223,19 @@ class DiagnosticController extends Controller
         $diagnostic = Diagnostic::with(['questions', 'periods', 'tenants'])->findOrFail($id);
 
         $rules = [
-            'title'          => 'required|string',
-            'description'    => 'nullable|string',
-            'questions_text' => 'required|array',
-            'questions_text.*' => 'nullable|exists:questions,id',
-            'questions_custom' => 'array',
-            'questions_custom.*' => 'nullable|string',
-            'questions_target'  => 'required|array',
-            'questions_target.*'=> 'required|in:admin,user',
-            'tenants'        => 'required|array',
-            'tenants.*'      => 'exists:tenants,id',
-            'tenant_ids'     => 'required|array',
+            'title'                  => 'required|string',
+            'description'            => 'nullable|string',
+            'questions_text'         => 'required|array',
+            'questions_text.*'       => 'nullable|exists:questions,id',
+            'questions_custom'       => 'array',
+            'questions_custom.*'     => 'nullable|string',
+            'questions_target'       => 'required|array',
+            'questions_target.*'     => 'required|in:admin,user',
+            'questions_category'     => 'required|array',
+            'questions_category.*'   => 'nullable|string',
+            'tenants'                => 'required|array',
+            'tenants.*'              => 'exists:tenants,id',
+            'tenant_ids'             => 'required|array',
         ];
 
         foreach ($request->input('tenant_ids', []) as $tenantId) {
@@ -247,23 +253,23 @@ class DiagnosticController extends Controller
         $diagnostic->questions()->detach();
 
         foreach ($request->questions_text as $index => $questionId) {
-            $target = $request->questions_target[$index] ?? 'admin';
-            $textCustom = $request->questions_custom[$index] ?? null;
+            $target   = $request->questions_target[$index] ?? 'admin';
+            $category = $request->questions_category[$index] ?? null;
+            $text     = $request->questions_custom[$index] ?? null;
 
             if ($questionId) {
                 $diagnostic->questions()->attach($questionId, ['target' => $target]);
-            } elseif ($textCustom) {
+            } elseif ($text) {
                 $newQuestion = Question::create([
-                    'text' => $textCustom,
-                    'category' => null,
-                    'target' => $target,
-                    'diagnostic_id' => $diagnostic->id,
+                    'text'           => $text,
+                    'category'       => $category,
+                    'target'         => $target,
+                    'diagnostic_id'  => $diagnostic->id,
                 ]);
-
                 $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
             }
         }
-
+        
         $selectedTenantIds = $request->input('tenants', []);
         $diagnostic->tenants()->sync($selectedTenantIds);
 

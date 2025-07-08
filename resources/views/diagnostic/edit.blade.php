@@ -162,22 +162,23 @@
 
 @push('scripts')
     <script>
-        let questionIndex = {{ count($diagnostic->questions) }}
+        let questionIndex = {{ count($diagnostic->questions ?? []) }};
+
+        const perguntasPorCategoria = @json($perguntasPorCategoria); 
 
         function addQuestion() {
-            const wrapper = document.getElementById('questions-wrapper')
+            const wrapper = document.getElementById('questions-wrapper');
 
-            const div = document.createElement('div')
-            div.className = 'question-block mb-3 border rounded p-3 position-relative'
+            const div = document.createElement('div');
+            div.className = 'question-block mb-3 border rounded p-3 position-relative';
 
             div.innerHTML = `
                 <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">
                     Remover
                 </button>
-                <input type="hidden" name="question_ids[]" value="">
 
                 <label class="form-label">Categoria</label>
-                <select name="questions[${questionIndex}][category]" class="form-select mb-2" required>
+                <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
                     <option value="">Selecione uma categoria</option>
                     <option value="comu_inte">Comunicação Interna</option>
                     <option value="reco_valo">Reconhecimento e Valorização</option>
@@ -190,80 +191,57 @@
                 </select>
 
                 <label class="form-label">Texto da pergunta</label>
-                <input type="text" name="questions[${questionIndex}][text]" class="form-control mb-2" required>
+                <select name="questions_text[${questionIndex}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, ${questionIndex})">
+                    <option value="">Digite outra pergunta...</option>
+                </select>
+
+                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
 
                 <label class="form-label">Público-alvo</label>
-                <select name="questions[${questionIndex}][target]" class="form-select" required>
+                <select name="questions_target[${questionIndex}]" class="form-select" required>
                     <option value="">Selecione o público</option>
                     <option value="admin">Administrador</option>
                     <option value="user">Colaborador</option>
                 </select>
-            `
+            `;
 
-            wrapper.appendChild(div)
-            questionIndex++
+            wrapper.appendChild(div);
+            questionIndex++;
         }
 
         function removeQuestion(button) {
-            const block = button.closest('.question-block')
-            block?.remove()
+            const block = button.closest('.question-block');
+            block?.remove();
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const tenantsSelect = document.getElementById('tenants')
-            const periodsContainer = document.getElementById('periods-container')
-            const periodTemplate = document.getElementById('period-template').innerHTML.trim()
+        function atualizarPerguntas(select, index) {
+            const categoria = select.value;
+            const selectPergunta = document.querySelector(`select[name="questions_text[${index}]"]`);
+            const inputCustom = document.querySelector(`input[name="questions_custom[${index}]"]`);
 
-            function updatePeriodsBlocks() {
-                const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value)
+            selectPergunta.innerHTML = `<option value="">Digite outra pergunta...</option>`;
 
-                selectedTenantIds.forEach(tenantId => {
-                    if (!periodsContainer.querySelector(`.period-block[data-tenant-id="${tenantId}"]`)) {
-                        const tempDiv = document.createElement('div')
-                        tempDiv.innerHTML = periodTemplate
-                        const block = tempDiv.firstElementChild
-
-                        block.setAttribute('data-tenant-id', tenantId)
-
-                        const tenantName = tenantsSelect.querySelector(`option[value="${tenantId}"]`)?.textContent || 'Empresa'
-
-                        block.querySelector('.tenant-name').textContent = tenantName
-
-                        const hiddenInput = block.querySelector('input.tenant-id-input')
-                        hiddenInput.value = tenantId
-                        hiddenInput.name = 'tenant_ids[]'
-
-                        const startInput = block.querySelector('.start-input')
-                        const endInput = block.querySelector('.end-input')
-
-                        startInput.name = `start[${tenantId}]`
-                        startInput.required = true
-
-                        endInput.name = `end[${tenantId}]`
-                        endInput.required = true
-
-                        const period = tenantLastPeriods[tenantId]
-                        if (period) {
-                            startInput.value = period.start
-                            endInput.value = period.end
-                        }
-
-                        periodsContainer.appendChild(block)
-                    }
-                })
-
-                const currentBlocks = periodsContainer.querySelectorAll('.period-block')
-                currentBlocks.forEach(block => {
-                    const tenantId = block.getAttribute('data-tenant-id')
-                    if (!selectedTenantIds.includes(tenantId)) {
-                        block.remove()
-                    }
-                })
+            if (perguntasPorCategoria[categoria]) {
+                perguntasPorCategoria[categoria].forEach(q => {
+                    const opt = document.createElement('option');
+                    opt.value = q.id;
+                    opt.textContent = q.text;
+                    selectPergunta.appendChild(opt);
+                });
             }
 
-            updatePeriodsBlocks()
-            tenantsSelect.addEventListener('change', updatePeriodsBlocks)
-        })
-    </script>
+            inputCustom.classList.remove('d-none');
+            inputCustom.value = '';
+        }
 
+        function handleQuestionChange(select, index) {
+            const input = document.querySelector(`input[name="questions_custom[${index}]"]`);
+            if (select.value === '') {
+                input.classList.remove('d-none');
+            } else {
+                input.classList.add('d-none');
+                input.value = '';
+            }
+        }
+    </script>
 @endpush
