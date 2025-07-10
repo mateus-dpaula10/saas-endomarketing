@@ -53,8 +53,94 @@
     </aside>
 
     <main>
+        <div id="barra-notificacao">
+            <div class="position-relative" id="notification">
+                <i class="fa-regular fa-bell" id="icon-notification" title="Notificações"></i>       
+                @if(!empty($notifications) && count($notifications) > 0)
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ count($notifications) }}
+                    </span>
+                @endif    
+            </div>            
+        </div>
+
+        <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="notificationsModalLabel">Notificações de Diagnósticos Abertos</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body" id="notificationsContent"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @yield('content')
     </main>
+
+    <script>
+        const notifications = @json($notifications ?? []);
+
+        function renderNotifications() {
+            const container = document.getElementById('notificationsContent');
+            container.innerHTML = '';
+
+            if (!notifications.length) {
+                container.innerHTML = '<p class="mb-0">Nenhum diagnóstico aberto para resposta.</p>';
+                return;
+            }
+
+            function parseDateToLocal(dateString) {
+                const parts = dateString.split('-');
+                return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+            }
+
+            notifications.forEach(notif => {
+                const daysLeft = notif.days_left;
+                const date = parseDateToLocal(notif.deadline);
+                const formattedDate = date.toLocaleDateString('pt-BR');
+                const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
+
+                let html = `
+                    <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">
+                        <h6>${notif.title}</h6>
+                        <p>
+                            Prazo para resposta: 
+                            <strong>${formattedDate}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
+                        </p>
+                `;
+
+                if (notif.total_pending !== undefined) {
+                    const userList = notif.users_pending?.length
+                        ? `<ul>${notif.users_pending.map(name => `<li>${name}</li>`).join('')}</ul>`
+                        : '<p class="text-muted">Sem usuários pendentes.</p>';
+
+                    html += `
+                        <p><strong>Pendentes:</strong> ${notif.total_pending} usuário(s)</p>
+                        ${userList}
+                        <a href="/diagnostico/${notif.id}" class="btn btn-sm btn-outline-dark mt-2">Ver diagnóstico</a>
+                    `;
+                } else {
+                    html += `
+                        <a href="/diagnostico/${notif.id}/answer" class="btn btn-sm btn-primary mt-2">Responder agora</a>
+                    `;
+                }
+
+                html += `</div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        document.getElementById('notification').addEventListener('click', () => {
+            renderNotifications();
+            const modal = new bootstrap.Modal(document.getElementById('notificationsModal'));
+            modal.show();
+        });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" 
         integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>

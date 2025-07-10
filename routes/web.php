@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TenantController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DiagnosticController;
+use App\Http\Controllers\NotificationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
@@ -23,6 +24,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
     Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
     Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
+
+    Route::get('/notificacoes', [DashboardController::class, 'notification'])->name('notification.index');
 });
 
 Route::middleware(['auth', 'role:superadmin'])->group(function () {

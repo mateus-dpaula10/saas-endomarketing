@@ -6,6 +6,7 @@ use App\Models\Dashboard;
 use Illuminate\Http\Request;
 use App\Models\Answer;
 use App\Models\Question;
+use App\Models\Diagnostic;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -150,5 +151,41 @@ class DashboardController extends Controller
     public function destroy(Dashboard $dashboard)
     {
         //
+    }
+
+    public function notification() {
+        $user = auth()->user();
+        
+        $diagnostics = Diagnostic::whereHas('periods', function($query) use ($user) {
+            $query->where('tenant_id', $user->tenant_id)
+                ->whereDate('start', '<=', now())
+                ->whereDate('end', '>=', now());
+        })->with(['periods' => function($query) use ($user) {
+            $query->where('tenant_id', $user->tenant_id)
+                ->whereDate('start', '<=', now())
+                ->whereDate('end', '>=', now());
+        }])->get();
+
+        $diagnosticsNotAnswered = $diagnostics->filter(function($diagnostic) use ($user) {
+            $period = $diagnostic->periods->first();
+            return $period && !$diagnostic->answers()
+                ->where('user_id', $user->id)
+                ->where('diagnostic_period_id', $period->id)
+                ->exists();
+        })->values();
+
+        $notifications = $diagnosticsNotAnswered->map(function($diag) {
+            $period = $diag->periods->first();
+            if (!$period) return null;
+
+            return [
+                'id' => $diag->id,
+                'title' => $diag->title,
+                'deadline' => $period->end->toDateString(),
+                'days_left' => now()->diffInDays($period->end, false),
+            ];
+        })->filter()->values();
+
+        return view('dashboard', ['notifications' => $notifications ?? collect()]);
     }
 }

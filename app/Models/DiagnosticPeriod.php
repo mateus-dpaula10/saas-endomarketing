@@ -10,6 +10,11 @@ class DiagnosticPeriod extends Model
     use HasFactory;
     protected $fillable = ['diagnostic_id', 'tenant_id', 'start', 'end'];
 
+    protected $casts = [
+        'start' => 'datetime', 
+        'end' => 'datetime'
+    ];
+
     public function diagnostic() {
         return $this->belongsTo(Diagnostic::class);
     }
