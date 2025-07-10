@@ -13,4 +13,8 @@ class Question extends Model
     public function diagnostics() {
         return $this->belongsToMany(Diagnostic::class)->withPivot('target')->withTimestamps();
     }
+
+    public function options() {
+        return $this->hasMany(QuestionOption::class);
+    }
 }

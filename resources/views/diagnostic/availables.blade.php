@@ -33,7 +33,9 @@
                         <p>{{ $diagnostic->description }}</p>
 
                         @php
-                            $questions = $diagnostic->questions->where('target', Auth::user()->role);
+                            $questions = $diagnostic->questions->filter(function ($q) {
+                                return $q->pivot && $q->pivot->target === Auth::user()->role;
+                            });
                         @endphp
 
                         @if ($diagnostic->questions->isEmpty())
@@ -47,10 +49,10 @@
                                     <div class="mb-3">
                                         <label class="form-label">{{ $question->text }}</label>
                                         <select name="answers[{{ $question->id }}]" class="form-select" required>
-                                            <option value="">Selecione uma nota</option>
-                                            @for ($i = 1; $i <= 5; $i++)
-                                                <option value="{{ $i }}">{{ $i }}</option>
-                                            @endfor
+                                            <option value="">Selecione uma opção</option>
+                                                @foreach ($question->options as $option)
+                                                    <option value="{{ $option->value }}">{{ $option->label }}</option>
+                                                @endforeach
                                         </select>
                                     </div>
                                 @endforeach

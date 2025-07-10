@@ -157,7 +157,7 @@
                                                                     <tr>
                                                                         <td>{{ $question->text }}</td>
                                                                         <td>{{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</td>
-                                                                        <td>{{ strtoupper($question->target === 'admin' ? 'Administrador' : 'Colaborador') }}</td>
+                                                                        <td style="text-transform: lowercase">{{ strtoupper($question->pivot->target === 'admin' ? 'Administrador' : 'Colaborador') }}</td>
                                                                         <td>{{ $answer->user->name ?? 'Usuário' }}</td>
                                                                         <td>{{ $answer->note }}</td>
                                                                     </tr>

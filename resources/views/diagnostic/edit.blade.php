@@ -105,7 +105,7 @@
                     </div>
 
                     <div class="form-group mt-4">
-                        <label class="form-label">Perguntas</label>
+                        <label class="form-label'">Perguntas</label>
                         <div id="questions-wrapper">
                             @foreach ($diagnostic->questions as $index => $question)
                                 <div class="question-block mb-3 border rounded p-3 position-relative">
@@ -116,7 +116,7 @@
                                     <input type="hidden" name="question_ids[]" value="{{ $question->id }}">
 
                                     <label class="form-label">Categoria</label>
-                                    <select name="questions[{{ $index }}][category]" class="form-select mb-2" required>
+                                    <select name="questions_category[]" class="form-select mb-2" required>
                                         <option value="">Selecione uma categoria</option>
                                         @foreach ([
                                             'comu_inte' => 'Comunicação Interna',
@@ -133,13 +133,20 @@
                                     </select>
 
                                     <label class="form-label">Texto da pergunta</label>
-                                    <input type="text" name="questions[{{ $index }}][text]" class="form-control mb-2" value="{{ $question->text }}" required>
+                                    <select name="questions_text[{{ $index }}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, {{ $index }})">
+                                        <option value="">Digite outra pergunta...</option>
+                                        @foreach (($perguntasPorCategoria[$question->category] ?? []) as $pergunta)
+                                            <option value="{{ $pergunta['id'] }}" {{ $pergunta['id'] == $question->id ? 'selected' : '' }}>
+                                                {{ $pergunta['text'] }}
+                                            </option>
+                                        @endforeach
+                                    </select>
 
                                     <label class="form-label">Público-alvo</label>
-                                    <select name="questions[{{ $index }}][target]" class="form-select" required>
+                                    <select name="questions_target[{{ $index }}]" class="form-select" required>
                                         <option value="">Selecione o público</option>
-                                        <option value="admin" {{ $question->target === 'admin' ? 'selected' : '' }}>Administrador</option>
-                                        <option value="user" {{ $question->target === 'user' ? 'selected' : '' }}>Colaborador</option>
+                                        <option value="admin" {{ ($question->pivot->target ?? $question->target) === 'admin' ? 'selected' : '' }}>Administrador</option>
+                                        <option value="user" {{ ($question->pivot->target ?? $question->target) === 'user' ? 'selected' : '' }}>Colaborador</option>
                                     </select>
                                 </div>
                             @endforeach
@@ -154,31 +161,25 @@
             </div>
         </div>
     </div>
-
-    <script>
-        const tenantLastPeriods = @json($periodsByTenant);
-    </script>
 @endsection
 
 @push('scripts')
     <script>
-        let questionIndex = {{ count($diagnostic->questions ?? []) }};
-
+        const tenantLastPeriods = @json($periodsByTenant);
         const perguntasPorCategoria = @json($perguntasPorCategoria); 
+
+        let questionIndex = {{ count($diagnostic->questions ?? []) }};
 
         function addQuestion() {
             const wrapper = document.getElementById('questions-wrapper');
-
             const div = document.createElement('div');
             div.className = 'question-block mb-3 border rounded p-3 position-relative';
 
             div.innerHTML = `
-                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">
-                    Remover
-                </button>
+                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">Remover</button>
 
                 <label class="form-label">Categoria</label>
-                <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
+                <select name="questions_category[]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
                     <option value="">Selecione uma categoria</option>
                     <option value="comu_inte">Comunicação Interna</option>
                     <option value="reco_valo">Reconhecimento e Valorização</option>
@@ -195,8 +196,6 @@
                     <option value="">Digite outra pergunta...</option>
                 </select>
 
-                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
-
                 <label class="form-label">Público-alvo</label>
                 <select name="questions_target[${questionIndex}]" class="form-select" required>
                     <option value="">Selecione o público</option>
@@ -211,7 +210,7 @@
 
         function removeQuestion(button) {
             const block = button.closest('.question-block');
-            block?.remove();
+            if(block) block.remove();
         }
 
         function atualizarPerguntas(select, index) {
@@ -243,5 +242,56 @@
                 input.value = '';
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tenantsSelect = document.getElementById('tenants');
+            const periodsContainer = document.getElementById('periods-container');
+            const periodTemplate = document.getElementById('period-template').firstElementChild;
+
+            function atualizarPeriodos() {
+                const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value);
+
+                Array.from(periodsContainer.querySelectorAll('.period-block')).forEach(block => {
+                    const tenantId = block.getAttribute('data-tenant-id');
+                    if (!selectedTenantIds.includes(tenantId)) {
+                        block.remove();
+                    }
+                });
+
+                selectedTenantIds.forEach(id => {
+                    if (!periodsContainer.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
+                        const newBlock = periodTemplate.cloneNode(true);
+                        newBlock.setAttribute('data-tenant-id', id);
+
+                        const tenantOption = tenantsSelect.querySelector(`option[value="${id}"]`);
+                        newBlock.querySelector('.tenant-name').textContent = tenantOption?.textContent || 'Empresa';
+
+                        const tenantIdInput = newBlock.querySelector('.tenant-id-input');
+                        tenantIdInput.name = 'tenant_ids[]';
+                        tenantIdInput.value = id;
+
+                        const startInput = newBlock.querySelector('.start-input');
+                        const endInput = newBlock.querySelector('.end-input');
+
+                        startInput.name = `start[${id}]`;
+                        endInput.name = `end[${id}]`;
+                        startInput.setAttribute('required', 'required');
+                        endInput.setAttribute('required', 'required');
+
+                        if (tenantLastPeriods[id]) {
+                            const startVal = tenantLastPeriods[id].start ? tenantLastPeriods[id].start.split(' ')[0] : '';
+                            const endVal = tenantLastPeriods[id].end ? tenantLastPeriods[id].end.split(' ')[0] : '';
+                            startInput.value = startVal;
+                            endInput.value = endVal;
+                        }
+
+                        periodsContainer.appendChild(newBlock);
+                    }
+                });
+            }
+
+            atualizarPeriodos(); 
+            tenantsSelect.addEventListener('change', atualizarPeriodos);
+        });
     </script>
 @endpush

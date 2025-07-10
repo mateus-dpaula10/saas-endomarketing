@@ -5,11 +5,9 @@
 @if (in_array($user->role, ['admin', 'user']))
     @if ($period)
         @if (!$hasAnswered && $hasQuestions)
-            {{-- Exibe botão para responder se ainda não respondeu e está no período --}}
             <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
         @elseif ($hasAnswered)
             @if ($user->role === 'admin')
-                {{-- Admin pode ver respostas após responder, se ainda estiver dentro do período --}}
                 <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                     Visualizar respostas
                 </button>
@@ -20,7 +18,6 @@
     @else
         @if ($hasAnsweredAnyPeriod)
             @if ($user->role === 'admin')
-                {{-- Admin pode ver respostas de períodos passados --}}
                 <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                     Visualizar respostas
                 </button>

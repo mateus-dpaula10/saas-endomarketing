@@ -23,7 +23,7 @@ class DiagnosticController extends Controller
         $role = $user->role;
         $tenantId = $user->tenant_id;
 
-        $diagnosticsQuery = Diagnostic::query();
+        $diagnosticsQuery = Diagnostic::query();        
 
         if ($role !== 'superadmin') {
             $diagnosticsQuery->whereHas('tenants', function ($query) use ($tenantId) {
@@ -56,7 +56,9 @@ class DiagnosticController extends Controller
                 )
                 ->first();
 
-            $questionsForUser = $diagnostic->questions->where('target', $role);
+            $questionsForUser = $diagnostic->questions->filter(function ($question) use ($role) {
+                return $question->pivot && $question->pivot->target === $role;
+            });
 
             $hasQuestions = $questionsForUser->isNotEmpty();
             $hasAnswered = false;
@@ -273,16 +275,18 @@ class DiagnosticController extends Controller
         $selectedTenantIds = $request->input('tenants', []);
         $diagnostic->tenants()->sync($selectedTenantIds);
 
-        foreach ($request->input('tenant_ids', []) as $tenantId) {
-            if (!in_array($tenantId, $selectedTenantIds)) continue;
+        $diagnostic->periods()
+            ->whereNotIn('tenant_id', $selectedTenantIds)
+            ->delete();
 
-            $start = Carbon::parse($request->start[$tenantId] ?? null);
-            $end   = Carbon::parse($request->end[$tenantId] ?? null);
+        foreach ($selectedTenantIds as $tenantId) {
+            $start = $request->start[$tenantId] ?? null;
+            $end   = $request->end[$tenantId] ?? null;
 
             if ($start && $end) {
                 $period = $diagnostic->periods()->firstOrNew(['tenant_id' => $tenantId]);
-                $period->start = $start;
-                $period->end   = $end;
+                $period->start = Carbon::parse($start);
+                $period->end   = Carbon::parse($end);
                 $period->save();
             }
         }
@@ -314,7 +318,7 @@ class DiagnosticController extends Controller
 
         $diagnostic = Diagnostic::with([
             'questions' => function ($query) use ($role) {
-                $query->where('target', $role);
+                $query->where('diagnostic_question.target', $role);
             },
             'tenants',
             'periods'
@@ -347,7 +351,7 @@ class DiagnosticController extends Controller
     }
 
     public function submitAnswer(Request $request, string $id) {
-        $diagnostic = Diagnostic::with('questions', 'periods')->findOrFail($id);
+        $diagnostic = Diagnostic::with('questions.options', 'periods')->findOrFail($id);
         $user = Auth::user();
 
         $currentPeriod = $diagnostic->periods()
@@ -377,15 +381,18 @@ class DiagnosticController extends Controller
             'answers.*' => 'required|integer|min:1|max:5'
         ]);
 
-        $validQuestionIds = $diagnostic->questions()
-            ->where('target', $user->role)
-            ->pluck('id')
-            ->toArray(); 
+        $questionsForRole = $diagnostic->questions->filter(fn($q) => $q->pivot && $q->pivot->target === $user->role);
+        $validQuestionIds = $questionsForRole->pluck('id')->toArray();
 
         foreach ($request->answers as $questionId => $note) {
             if (!in_array($questionId, $validQuestionIds)) {
                 continue;
             }
+
+            $question = $questionsForRole->firstWhere('id', $questionId);
+            $validValues = $question->options->pluck('value')->toArray();
+
+            if (!in_array((int)$note, $validValues)) continue;
 
             Answer::create([
                 'user_id'                  => $user->id,
