@@ -53,14 +53,19 @@
     </aside>
 
     <main>
+        @php
+            $notificationCount = count($notifications ?? []);
+        @endphp
+
         <div id="barra-notificacao">
-            <div class="position-relative" id="notification">
-                <i class="fa-regular fa-bell" id="icon-notification" title="Notificações"></i>       
-                @if(!empty($notifications) && count($notifications) > 0)
+            <div class="position-relative" id="notification"> 
+                <i class="fa-regular fa-bell {{ count($notifications ?? []) > 0 ? 'bell-shake' : '' }}" id="icon-notification" title="Notificações"></i>
+                @if($notificationCount > 0)
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ count($notifications) }}
+                        {{ $notificationCount }}
+                        <span class="visually-hidden">notificações não lidas</span>
                     </span>
-                @endif    
+                @endif
             </div>            
         </div>
 
@@ -114,23 +119,6 @@
                         </p>
                 `;
 
-                if (notif.total_pending !== undefined) {
-                    const userList = notif.users_pending?.length
-                        ? `<ul>${notif.users_pending.map(name => `<li>${name}</li>`).join('')}</ul>`
-                        : '<p class="text-muted">Sem usuários pendentes.</p>';
-
-                    html += `
-                        <p><strong>Pendentes:</strong> ${notif.total_pending} usuário(s)</p>
-                        ${userList}
-                        <a href="/diagnostico/${notif.id}" class="btn btn-sm btn-outline-dark mt-2">Ver diagnóstico</a>
-                    `;
-                } else {
-                    html += `
-                        <a href="/diagnostico/${notif.id}/answer" class="btn btn-sm btn-primary mt-2">Responder agora</a>
-                    `;
-                }
-
-                html += `</div>`;
                 container.innerHTML += html;
             });
         }
