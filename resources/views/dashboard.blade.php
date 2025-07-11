@@ -79,6 +79,9 @@
                             <h6 class="mb-2">Colaboradores com diagnósticos pendentes</h6>
                             <div id="adminNotificationsContent"></div>
                         @endif
+                        <hr>
+                        <h6>Notificações gerais</h6>
+                        <div id="dbNotificationsContent"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -93,6 +96,7 @@
     <script>
         const notifications = @json($notifications ?? []);
         const pendingUsersNotifications = @json($pendingUsersNotifications ?? []);
+        const dbNotifications = @json($dbNotifications ?? []);
 
         function parseDateToLocal(dateString) {
             const parts = dateString.split('-');
@@ -109,17 +113,18 @@
             } else {
                 notifications.forEach(notif => {
                     const daysLeft = notif.days_left;
-                    const date = parseDateToLocal(notif.deadline);
-                    const formattedDate = date.toLocaleDateString('pt-BR');
                     const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
+
+                    let url = `/diagnostico/answer/${notif.diagnostic_id}`;  
 
                     let html = `
                         <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">
                             <h6>${notif.title}</h6>
                             <p>
                                 Prazo para resposta: 
-                                <strong>${formattedDate}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
+                                <strong>${notif.deadline}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
                             </p>
+                            <a class="btn btn-outline-danger" href="${url}">Responder</a>
                     `;
 
                     userContainer.innerHTML += html;
@@ -133,13 +138,14 @@
                     adminContainer.innerHTML = '<p class="text-muted">Nenhuma pendência de colaboradores.</p>';
                 } else {
                     pendingUsersNotifications.forEach(notif => {
-                        const deadline = new Date(notif.deadline).toLocaleDateString('pt-BR');
+                        const [year, month, day] = notif.deadline.split('-');
+                        const formattedDate = `${day}/${month}/${year}`;
 
                         let html = `
                             <div class="alert alert-info mb-3">
                                 <h6>${notif.title}</h6>
                                 <p>
-                                    Prazo: <strong>${deadline}</strong><br>
+                                    Prazo: <strong>${formattedDate}</strong><br>
                                     Colaboradores pendentes: <strong>${notif.pending_count}</strong>
                                 </p>
                                 <ul>
@@ -151,6 +157,27 @@
                         adminContainer.innerHTML += html;
                     });
                 }
+            }
+
+            const dbContainer = document.getElementById('dbNotificationsContent');
+            dbContainer.innerHTML = '';
+
+            if (!dbNotifications.length) {
+                dbContainer.innerHTML = '<p class="text-muted">Nenhuma notificação geral.</p>';
+            } else {
+                dbNotifications.forEach(notif => {
+                    const createdAt = new Date(notif.created_at).toLocaleString('pt-BR');
+
+                    let html = `
+                        <div class="alert alert-secondary mb-3">
+                            <h6>${notif.title}</h6>
+                            <p>${notif.message}</p>
+                            <small class="text-muted">Recebido em: ${createdAt}</small>
+                        </div>
+                    `;
+
+                    dbContainer.innerHTML += html;
+                });
             }
 
             const modal = new bootstrap.Modal(document.getElementById('notificationsModal'));

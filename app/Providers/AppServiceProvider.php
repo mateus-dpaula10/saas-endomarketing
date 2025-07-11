@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Diagnostic;
 use App\Models\User;
 use App\Models\Answer;
+use App\Models\Notification;
 use Carbon\Carbon;
+use Illuminate\Notifications\DatabaseNotification;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(
+            \Illuminate\Contracts\Console\Kernel::class,
+            \App\Console\Kernel::class
+        );
     }
 
     /**
@@ -33,7 +38,9 @@ class AppServiceProvider extends ServiceProvider
 
             if (!$user) {
                 $view->with('notifications', collect())
-                    ->with('pendingUsersNotifications', collect());
+                    ->with('pendingUsersNotifications', collect())
+                    ->with('dbNotifications', collect())
+                    ->with('notificationCount', 0);
                 return;
             }
 
@@ -65,8 +72,9 @@ class AppServiceProvider extends ServiceProvider
 
                 return [
                     'id'            => $diagnostic->id,
+                    'diagnostic_id' => $diagnostic->id,
                     'title'         => $diagnostic->title,
-                    'deadline'      => $period->end->toDateString(),
+                    'deadline'      => $period->end->format('d-m-Y'),
                     'days_left'     => Carbon::now()->startOfDay()->diffInDays(Carbon::parse($period->end)->startOfDay(), false)
                 ];
             })->values();
@@ -99,10 +107,24 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
 
-            $notificationCount = $notifications->count() + $pendingUsersNotifications->count();
+            $dbNotifications = DatabaseNotification::where('notifiable_id', $user->id)
+                ->where('notifiable_type', User::class)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($notif) {
+                    return [
+                        'id' => $notif->id,
+                        'title' => $notif->data['title'] ?? 'Sem título',
+                        'message' => $notif->data['message'] ?? 'Sem mensagem',
+                        'created_at' => $notif->created_at->toDateTimeString(),
+                    ];
+                });
+
+            $notificationCount = $notifications->count() + $pendingUsersNotifications->count() + $dbNotifications->count();
 
             $view->with('notifications', $notifications)
                 ->with('pendingUsersNotifications', $pendingUsersNotifications)
+                ->with('dbNotifications', $dbNotifications)
                 ->with('notificationCount', $notificationCount);
         });
     }
