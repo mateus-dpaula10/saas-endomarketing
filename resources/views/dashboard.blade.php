@@ -89,6 +89,7 @@
 
     <script>
         const notifications = @json($notifications ?? []);
+        console.log(notifications);
 
         function renderNotifications() {
             const container = document.getElementById('notificationsContent');

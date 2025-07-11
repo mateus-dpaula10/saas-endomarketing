@@ -26,15 +26,13 @@ class AppServiceProvider extends ServiceProvider
     {
         Route::aliasMiddleware('role', \App\Http\Middleware\CheckRole::class);
 
-        View::composer('layouts.dashboard', function ($view) {
+        View::composer('dashboard', function ($view) {
             $user = Auth::user();
 
             if (!$user) {
                 $view->with('notifications', collect());
                 return;
             }
-
-            $notifications = collect();
 
             $diagnostics = Diagnostic::whereHas('periods', function ($query) use ($user) {
                 $query->where('tenant_id', $user->tenant_id)
@@ -46,7 +44,9 @@ class AppServiceProvider extends ServiceProvider
                         ->whereDate('start', '<=', Carbon::now())
                         ->whereDate('end', '>=', Carbon::now());
                 },
-                'answers'
+                'answers' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }
             ])->get();
 
             $notifications = $diagnostics->filter(function ($diagnostic) use ($user) {
@@ -54,16 +54,15 @@ class AppServiceProvider extends ServiceProvider
                 if (!$period) return false;
 
                 return !$diagnostic->answers()
-                    ->where('user_id', $user->id)
                     ->where('diagnostic_period_id', $period->id)
-                    ->exists();
-            })->map(function($diagnostic) {
+                    ->count();
+            })->map(function ($diagnostic) {
                 $period = $diagnostic->periods->first();
 
                 return [
                     'id'            => $diagnostic->id,
                     'title'         => $diagnostic->title,
-                    'deadline'      => Carbon::parse($period->end)->format('d/m/Y'),
+                    'deadline'      => $period->end->toDateString(),
                     'days_left'     => Carbon::now()->startOfDay()->diffInDays(Carbon::parse($period->end)->startOfDay(), false)
                 ];
             })->values();
