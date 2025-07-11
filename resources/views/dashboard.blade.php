@@ -53,13 +53,9 @@
     </aside>
 
     <main>
-        @php
-            $notificationCount = count($notifications ?? []);
-        @endphp
-
         <div id="barra-notificacao">
             <div class="position-relative" id="notification"> 
-                <i class="fa-regular fa-bell {{ count($notifications ?? []) > 0 ? 'bell-shake' : '' }}" id="icon-notification" title="Notificações"></i>
+                <i class="fa-regular fa-bell {{ $notificationCount > 0 ? 'bell-shake' : '' }}" id="icon-notification" title="Notificações"></i>
                 @if($notificationCount > 0)
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
                         {{ $notificationCount }}
@@ -76,7 +72,14 @@
                         <h5 class="modal-title" id="notificationsModalLabel">Notificações de Diagnósticos Abertos</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
-                    <div class="modal-body" id="notificationsContent"></div>
+                    <div class="modal-body">
+                        <div id="notificationsContent"></div>
+                        @if (Auth::user()->role === 'admin')
+                            <hr class="my-4">
+                            <h6 class="mb-2">Colaboradores com diagnósticos pendentes</h6>
+                            <div id="adminNotificationsContent"></div>
+                        @endif
+                    </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                     </div>
@@ -89,46 +92,72 @@
 
     <script>
         const notifications = @json($notifications ?? []);
-        console.log(notifications);
+        const pendingUsersNotifications = @json($pendingUsersNotifications ?? []);
 
-        function renderNotifications() {
-            const container = document.getElementById('notificationsContent');
-            container.innerHTML = '';
-
-            if (!notifications.length) {
-                container.innerHTML = '<p class="mb-0">Nenhum diagnóstico aberto para resposta.</p>';
-                return;
-            }
-
-            function parseDateToLocal(dateString) {
-                const parts = dateString.split('-');
-                return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
-            }
-
-            notifications.forEach(notif => {
-                const daysLeft = notif.days_left;
-                const date = parseDateToLocal(notif.deadline);
-                const formattedDate = date.toLocaleDateString('pt-BR');
-                const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
-
-                let html = `
-                    <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">
-                        <h6>${notif.title}</h6>
-                        <p>
-                            Prazo para resposta: 
-                            <strong>${formattedDate}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
-                        </p>
-                `;
-
-                container.innerHTML += html;
-            });
+        function parseDateToLocal(dateString) {
+            const parts = dateString.split('-');
+            return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
         }
 
-        document.getElementById('notification').addEventListener('click', () => {
-            renderNotifications();
+        function renderNotifications() {
+            const userContainer = document.getElementById('notificationsContent');
+            const adminContainer = document.getElementById('adminNotificationsContent');
+
+            userContainer.innerHTML = '';
+            if (!notifications.length) {
+                userContainer.innerHTML = '<p class="mb-0">Nenhum diagnóstico aberto para resposta.</p>';
+            } else {
+                notifications.forEach(notif => {
+                    const daysLeft = notif.days_left;
+                    const date = parseDateToLocal(notif.deadline);
+                    const formattedDate = date.toLocaleDateString('pt-BR');
+                    const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
+
+                    let html = `
+                        <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">
+                            <h6>${notif.title}</h6>
+                            <p>
+                                Prazo para resposta: 
+                                <strong>${formattedDate}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
+                            </p>
+                    `;
+
+                    userContainer.innerHTML += html;
+                });
+            }
+
+            if (adminContainer) {
+                adminContainer.innerHTML = '';
+
+                if (!pendingUsersNotifications.length) {
+                    adminContainer.innerHTML = '<p class="text-muted">Nenhuma pendência de colaboradores.</p>';
+                } else {
+                    pendingUsersNotifications.forEach(notif => {
+                        const deadline = new Date(notif.deadline).toLocaleDateString('pt-BR');
+
+                        let html = `
+                            <div class="alert alert-info mb-3">
+                                <h6>${notif.title}</h6>
+                                <p>
+                                    Prazo: <strong>${deadline}</strong><br>
+                                    Colaboradores pendentes: <strong>${notif.pending_count}</strong>
+                                </p>
+                                <ul>
+                                    ${notif.pending_users.map(name => `<li>${name}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+
+                        adminContainer.innerHTML += html;
+                    });
+                }
+            }
+
             const modal = new bootstrap.Modal(document.getElementById('notificationsModal'));
-            modal.show();
-        });
+            modal.show();            
+        }
+
+        document.getElementById('notification').addEventListener('click', renderNotifications);
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" 
