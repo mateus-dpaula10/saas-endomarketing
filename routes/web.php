@@ -8,6 +8,7 @@ use App\Http\Controllers\TenantController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AdminNotificationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
@@ -41,6 +42,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     // Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
+    Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
 });
 
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {

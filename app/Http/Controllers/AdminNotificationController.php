@@ -1,49 +1,29 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Http\Controllers;
 
-use Illuminate\Console\Command;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use App\Models\Diagnostic;
 use App\Models\User;
 use App\Models\Answer;
 use App\Notifications\DiagnosticPendingNotification;
-use Carbon\Carbon;
 
-class NotifyPendingDiagnostics extends Command
+class AdminNotificationController extends Controller
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'notify:pending-diagnostics';
-
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Envia notificações para usuários que ainda não responderam diagnósticos pendentes';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
-    {
+    public function notifyPendingUsers() {
         $now = Carbon::now();
 
         $diagnostics = Diagnostic::whereHas('periods', function ($q) use ($now) {
             $q->whereDate('start', '<=', $now)
-            ->whereDate('end', '>=', $now);
-        })
-        ->with(['periods' => function($q) use ($now) {
+                ->whereDate('end', '>=', $now);
+        })->with(['periods' => function ($q) use ($now) {
             $q->whereDate('start', '<=', $now)
-            ->whereDate('end', '>=', $now);
-        }])
-        ->get();
+                ->whereDate('end', '>=', $now);
+        }])->get();
 
         foreach ($diagnostics as $diagnostic) {
-            foreach ($diagnostic->periods as $period) {                
+            foreach ($diagnostic->periods as $period) {
                 $users = User::where('tenant_id', $period->tenant_id)->get();
 
                 foreach ($users as $user) {
@@ -64,6 +44,6 @@ class NotifyPendingDiagnostics extends Command
             }
         }
 
-        $this->info('Notificações enviadas com sucesso.');
+        return response()->json(['message' => 'Notificações enviadas com sucesso!']);
     }
 }

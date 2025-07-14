@@ -78,6 +78,9 @@
                             <hr class="my-4">
                             <h6 class="mb-2">Colaboradores com diagnósticos pendentes</h6>
                             <div id="adminNotificationsContent"></div>
+
+                            <button id="notifyPendingBtn" class="btn btn-primary mb-3">Notificar colaboradores</button>
+                            <div id="notifyFeedback" class="text-success small"></div>
                         @endif
                         <hr>
                         <h6>Notificações gerais</h6>
@@ -185,6 +188,32 @@
         }
 
         document.getElementById('notification').addEventListener('click', renderNotifications);
+
+        document.getElementById('notifyPendingBtn')?.addEventListener('click', function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerText = 'Enviando...';
+
+            fetch("{{ route('admin.notify.pending') }}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('notifyFeedback').innerText = data.message;
+            })
+            .catch(() => {
+                document.getElementById('notifyFeedback').innerText = "Erro ao enviar notificações.";
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = 'Notificar colaboradores';
+            });
+        });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" 
