@@ -118,7 +118,7 @@
                     const daysLeft = notif.days_left;
                     const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
 
-                    let url = `/diagnostico/answer/${notif.diagnostic_id}`;  
+                    let url = `/diagnostico/${notif.diagnostic_id}/answer`;  
 
                     let html = `
                         <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">

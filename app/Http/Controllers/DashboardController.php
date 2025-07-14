@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Answer;
 use App\Models\Question;
 use App\Models\Diagnostic;
+use App\Models\Campaign;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -33,12 +34,32 @@ class DashboardController extends Controller
         ];
 
         if ($isSuperAdmin) {
+            $campanhas = Campaign::with(['standardCampaign.content'])
+                ->where('is_auto', true)
+                ->whereDate('start_date', '<=', now())
+                ->whereDate('end_date', '>=', now())
+                ->orderBy('start_date', 'desc')
+                ->get();
+        } else {
+            $campanhas = Campaign::with(['standardCampaign.content'])
+                ->where('tenant_id', $tenantId)
+                ->where('is_auto', true)
+                ->whereDate('start_date', '<=', now())
+                ->whereDate('end_date', '>=', now())
+                ->orderBy('start_date', 'desc')
+                ->get();
+        }
+
+        if ($isSuperAdmin) {
             $respostas = Answer::with(['question', 'period', 'tenant'])
                 ->get()
                 ->sortBy(fn($resposta) => $resposta->period->start ?? now());
 
             if ($respostas->isEmpty()) {
-                return view('dashboard.index', ['semRespostas' => true]);
+                return view('dashboard.index', [
+                    'semRespostas' => true,
+                    'campanhas'    => $campanhas
+                ]);
             }
 
             $respostasPorTenant = $respostas->groupBy(fn($r) => $r->tenant->nome ?? 'Empresa desconhecida');
@@ -64,7 +85,8 @@ class DashboardController extends Controller
             }
 
             return view('dashboard.index', [
-                'analisesPorEmpresa' => $analisesPorEmpresa
+                'analisesPorEmpresa' => $analisesPorEmpresa,
+                'campanhas' => $campanhas
             ]);
         }
 
@@ -76,7 +98,8 @@ class DashboardController extends Controller
 
             if ($respostas->isEmpty()) {
                 return view('dashboard.index', [
-                    'semRespostas' => true
+                    'semRespostas' => true,
+                    'campanhas' => $campanhas
                 ]);
             }
 
@@ -96,12 +119,14 @@ class DashboardController extends Controller
             });
 
             return view('dashboard.index', [
-                'evolucaoCategorias' => $dadosPorCategoria
+                'evolucaoCategorias' => $dadosPorCategoria,
+                'campanhas' => $campanhas
             ]);
         }
 
         return view('dashboard.index', [
-            'mensagem' => 'Bem-vindo! Aqui você verá seus próximos passos ou lembretes da empresa.'
+            'mensagem'  => 'Bem-vindo! Aqui você verá seus próximos passos ou lembretes da empresa.',
+            'campanhas' => $campanhas
         ]);
     }
 

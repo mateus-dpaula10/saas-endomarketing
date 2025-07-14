@@ -9,6 +9,8 @@ use App\Models\Answer;
 use App\Models\Tenant;
 use App\Models\Question;
 use App\Models\DiagnosticPeriod;
+use App\Models\StandardCampaign;
+use App\Models\Campaign;
 use Illuminate\Support\Facades\Auth;
 
 class DiagnosticController extends Controller
@@ -306,11 +308,10 @@ class DiagnosticController extends Controller
         return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico excluído com sucesso!');
     }
 
-    // public function available() {
-    //     $diagnosticsQuery = Diagnostic::whereNull('tenant_id')->with('questions')->get();
-
-    //     return view ('diagnostic.availables', compact('diagnostics'));
-    // }
+    public function available() {
+        $diagnostics = Diagnostic::whereNull('tenant_id')->with('questions')->get();
+        return view('diagnostics.available', compact('diagnostics'));
+    }
 
     public function showAnswerForm(string $id) {
         $user = Auth::user();
@@ -351,8 +352,13 @@ class DiagnosticController extends Controller
     }
 
     public function submitAnswer(Request $request, string $id) {
-        $diagnostic = Diagnostic::with('questions.options', 'periods')->findOrFail($id);
         $user = Auth::user();
+
+        $diagnostic = Diagnostic::with('questions.options', 'periods')
+            ->whereHas('tenants', function ($q) use ($user) {
+                $q->where('tenants.id', $user->tenant_id);
+            })
+            ->findOrFail($id);
 
         $currentPeriod = $diagnostic->periods()
             ->whereDate('start', '<=', now())
@@ -362,7 +368,7 @@ class DiagnosticController extends Controller
             ->first();
 
         if (!$currentPeriod) {
-            return redirect()->route('diagnostico.available')->with('error', 'Não há período de resposta ativo.');
+            return redirect()->route('diagnostico.index')->with('error', 'Não há período de resposta ativo.');
         }
 
         $alreadyAnswered = Answer::where('diagnostic_id', $diagnostic->id)
@@ -372,7 +378,7 @@ class DiagnosticController extends Controller
             ->exists();
 
         if ($alreadyAnswered) {
-            return redirect()->route('diagnostico.available')
+            return redirect()->route('diagnostico.index')
                 ->with('error', 'Este diagnóstico já foi respondido neste período.');
         }
 
@@ -385,9 +391,7 @@ class DiagnosticController extends Controller
         $validQuestionIds = $questionsForRole->pluck('id')->toArray();
 
         foreach ($request->answers as $questionId => $note) {
-            if (!in_array($questionId, $validQuestionIds)) {
-                continue;
-            }
+            if (!in_array($questionId, $validQuestionIds)) continue;
 
             $question = $questionsForRole->firstWhere('id', $questionId);
             $validValues = $question->options->pluck('value')->toArray();
@@ -395,15 +399,45 @@ class DiagnosticController extends Controller
             if (!in_array((int)$note, $validValues)) continue;
 
             Answer::create([
-                'user_id'                  => $user->id,
-                'diagnostic_id'            => $diagnostic->id,
-                'question_id'              => $questionId,
-                'note'                     => $note,
-                'tenant_id'                => $user->tenant_id,
-                'diagnostic_period_id'     => $currentPeriod->id
+                'user_id'              => $user->id,
+                'diagnostic_id'        => $diagnostic->id,
+                'question_id'          => $questionId,
+                'note'                 => $note,
+                'tenant_id'            => $user->tenant_id,
+                'diagnostic_period_id' => $currentPeriod->id
             ]);
         }
-        
+
+        $respostas = Answer::where('user_id', $user->id)
+            ->where('diagnostic_id', $diagnostic->id)
+            ->where('diagnostic_period_id', $currentPeriod->id)
+            ->with('question')
+            ->get();
+            
+        $notasPorCategoria = $respostas->groupBy(fn($a) => $a->question->category)
+            ->map(fn($grupo) => round($grupo->avg('note'), 1));
+            
+        foreach ($notasPorCategoria as $categoria => $nota) {
+            $campanhaPadrao = StandardCampaign::where('category_code', $categoria)
+                ->where('trigger_max_score', '>=', $nota) 
+                ->where('is_active', true)
+                ->orderBy('trigger_max_score') 
+                ->first();
+
+            if ($campanhaPadrao) {
+                Campaign::create([
+                    'tenant_id'            => $user->tenant_id,
+                    'standard_campaign_id' => $campanhaPadrao->id,
+                    'text'                 => $campanhaPadrao->text,
+                    'description'          => $campanhaPadrao->description,
+                    'start_date'           => now(),
+                    'end_date'             => now()->addWeeks(3),
+                    'is_auto'              => true,
+                    'is_manual'            => false
+                ]);
+            }
+        }
+
         return redirect()->route('diagnostico.index')->with('success', 'Respostas enviadas com sucesso!');
     }
 

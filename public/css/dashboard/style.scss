@@ -22,8 +22,8 @@ body {
 
     aside {
         width: 240px;
+        min-height: 1000px;
         border-right: 1px solid;
-        min-height: 100dvh;
         padding: 2rem 0;
         background-color: $primaria;
         position: relative;

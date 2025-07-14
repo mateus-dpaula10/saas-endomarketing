@@ -41,7 +41,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
-    // Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
+    Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
     Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
 });
 
