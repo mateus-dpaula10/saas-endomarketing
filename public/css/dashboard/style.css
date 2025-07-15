@@ -13,7 +13,6 @@ body {
 }
 body aside {
   width: 240px;
-  min-height: 1000px;
   border-right: 1px solid;
   padding: 2rem 0;
   background-color: #2C3E50;
@@ -78,10 +77,6 @@ body aside nav ul li:hover {
   100% {
     transform: rotate(0);
   }
-}
-body main {
-  flex-basis: 0;
-  flex-grow: 1;
 }
 body main #barra-notificacao {
   width: 100%;

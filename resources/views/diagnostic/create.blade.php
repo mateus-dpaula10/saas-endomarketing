@@ -145,16 +145,31 @@
             const categoria = select.value;
             const perguntas = perguntasPorCategoria[categoria] || [];
 
+            const selectedIds = [];
+            document.querySelectorAll('.question-block').forEach(block => {
+                const currentIndex = block.getAttribute('data-index');
+                if (parseInt(currentIndex) === index) return;
+
+                const catSelect = block.querySelector(`select[name="questions_category[${currentIndex}]"]`);
+                const textSelect = block.querySelector(`select[name="questions_text[${currentIndex}]"]`);
+                
+                if (catSelect?.value === categoria && textSelect?.value) {
+                    selectedIds.push(textSelect.value);
+                }
+            });
+
             const questionSelect = document.querySelector(`select[name="questions_text[${index}]"]`);
             const questionInput = document.querySelector(`input[name="questions_custom[${index}]"]`);
 
             questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
 
             perguntas.forEach(pergunta => {
-                const option = document.createElement('option');
-                option.value = pergunta.id;
-                option.textContent = pergunta.text;
-                questionSelect.appendChild(option);
+                if (!selectedIds.includes(String(pergunta.id))) {
+                    const option = document.createElement('option');
+                    option.value = pergunta.id;
+                    option.textContent = pergunta.text;
+                    questionSelect.appendChild(option);
+                }
             });
 
             questionSelect.classList.remove('d-none');

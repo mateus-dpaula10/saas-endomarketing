@@ -14,8 +14,9 @@
     <link rel="icon" type="image/png" href="{{ asset('img/logos/sistema-favicon.png') }}">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body>
+<body>  
     <aside>
         <button id="close-menu">☰</button>
 
@@ -97,6 +98,19 @@
     </main>
 
     <script>
+        function igualarAltura() {
+            const main = document.querySelector('main');
+            const aside = document.querySelector('aside');
+
+            if (main && aside) {
+                const alturaConteudoTotal = main.scrollHeight;
+                aside.style.height = alturaConteudoTotal + 'px';
+            }
+        }
+
+        window.addEventListener('load', igualarAltura);
+        window.addEventListener('resize', igualarAltura);
+
         const notifications = @json($notifications ?? []);
         const pendingUsersNotifications = @json($pendingUsersNotifications ?? []);
         const dbNotifications = @json($dbNotifications ?? []);
@@ -152,7 +166,8 @@
                                     Colaboradores pendentes: <strong>${notif.pending_count}</strong>
                                 </p>
                                 <ul>
-                                    ${notif.pending_users.map(name => `<li>${name}</li>`).join('')}
+                                    <li><strong>Colaboradores:</strong> ${notif.pending_users.filter(u => u.role === 'user').length}</li>
+                                    <li><strong>Administradores:</strong> ${notif.pending_users.filter(u => u.role === 'admin').length}</li>
                                 </ul>
                             </div>
                         `;

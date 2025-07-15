@@ -218,18 +218,31 @@
             const selectPergunta = document.querySelector(`select[name="questions_text[${index}]"]`);
             const inputCustom = document.querySelector(`input[name="questions_custom[${index}]"]`);
 
+            const perguntas = perguntasPorCategoria[categoria] || [];
+
+            const selectedIds = [];
+            document.querySelectorAll('.question-block').forEach((block, idx) => {
+                if (idx === index) return;
+
+                const catSelect = block.querySelector(`select[name="questions_category[]"]`);
+                const textSelect = block.querySelector(`select[name^="questions_text["]`);
+                
+                if (catSelect?.value === categoria && textSelect?.value) {
+                    selectedIds.push(textSelect.value);
+                }
+            });
+
             selectPergunta.innerHTML = `<option value="">Digite outra pergunta...</option>`;
-
-            if (perguntasPorCategoria[categoria]) {
-                perguntasPorCategoria[categoria].forEach(q => {
+            perguntas.forEach(pergunta => {
+                if (!selectedIds.includes(String(pergunta.id))) {
                     const opt = document.createElement('option');
-                    opt.value = q.id;
-                    opt.textContent = q.text;
+                    opt.value = pergunta.id;
+                    opt.textContent = pergunta.text;
                     selectPergunta.appendChild(opt);
-                });
-            }
+                }
+            });
 
-            inputCustom.classList.remove('d-none');
+            inputCustom?.classList.remove('d-none');
             inputCustom.value = '';
         }
 

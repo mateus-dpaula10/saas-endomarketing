@@ -418,10 +418,17 @@ class DiagnosticController extends Controller
             ->map(fn($grupo) => round($grupo->avg('note'), 1));
             
         foreach ($notasPorCategoria as $categoria => $nota) {
+            Campaign::where('tenant_id', $user->tenant_id)
+                ->where('diagnostic_id', $diagnostic->id)
+                ->where('is_auto', true)
+                ->whereHas('standardCampaign', function ($query) use ($categoria) {
+                    $query->where('category_code', $categoria);
+                })->delete();
+
             $campanhaPadrao = StandardCampaign::where('category_code', $categoria)
-                ->where('trigger_max_score', '>=', $nota) 
+                ->where('trigger_max_score', '>=', $nota)
                 ->where('is_active', true)
-                ->orderBy('trigger_max_score') 
+                ->orderBy('trigger_max_score')
                 ->first();
 
             if ($campanhaPadrao) {

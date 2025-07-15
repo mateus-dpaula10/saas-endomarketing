@@ -98,7 +98,10 @@ class AppServiceProvider extends ServiceProvider
                             'title'         => $diagnostic->title,
                             'deadline'      => $period->end->toDateString(),
                             'pending_count' => $pendingUsers->count(),
-                            'pending_users' => $pendingUsers->pluck('name')->values(),
+                            'pending_users' => $pendingUsers->map(fn($user) => [
+                                'name' => $user->name,
+                                'role' => $user->role,
+                            ])->values(),
                         ]);
                     }
                 }

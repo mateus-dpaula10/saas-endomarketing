@@ -142,7 +142,7 @@
                                                             <th>Pergunta</th>
                                                             <th>Categoria</th>
                                                             <th>Função</th>
-                                                            <th>Colaborador</th>
+                                                            {{-- <th>Colaborador</th> --}}
                                                             <th>Nota</th>
                                                         </tr>
                                                     </thead>
@@ -158,7 +158,7 @@
                                                                         <td>{{ $question->text }}</td>
                                                                         <td>{{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</td>
                                                                         <td style="text-transform: lowercase">{{ strtoupper($question->pivot->target === 'admin' ? 'Administrador' : 'Colaborador') }}</td>
-                                                                        <td>{{ $answer->user->name ?? 'Usuário' }}</td>
+                                                                        {{-- <td>{{ $answer->user->role === 'user' ? 'Colaborador' : 'Administrador' }}</td> --}}
                                                                         <td>{{ $answer->note }}</td>
                                                                     </tr>
                                                                 @endforeach

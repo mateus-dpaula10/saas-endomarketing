@@ -18,9 +18,9 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $isAdmin = $user->role === 'admin';
-        $isSuperAdmin = $user->role === 'superadmin';
+        $role = $user->role;
         $tenantId = $user->tenant_id;
+        $now = Carbon::now();
 
         $nomesCategorias = [
             'comu_inte' => 'Comunicação interna',
@@ -33,28 +33,16 @@ class DashboardController extends Controller
             'pert_enga' => 'Pertencimento e Engajamento'
         ];
 
-        if ($isSuperAdmin) {
-            $campanhas = Campaign::with(['standardCampaign.content'])
-                ->where('is_auto', true)
-                ->whereDate('start_date', '<=', now())
-                ->whereDate('end_date', '>=', now())
-                ->orderBy('start_date', 'desc')
-                ->get();
-        } else {
-            $campanhas = Campaign::with(['standardCampaign.content'])
-                ->where('tenant_id', $tenantId)
-                ->where('is_auto', true)
-                ->whereDate('start_date', '<=', now())
-                ->whereDate('end_date', '>=', now())
-                ->orderBy('start_date', 'desc')
-                ->get();
-        }
+        $campanhas = Campaign::with(['standardCampaign.content'])
+            ->where('is_auto', true)
+            ->when($role !== 'superadmin', fn($q) => $q->where('tenant_id', $tenantId))
+            ->whereDate('start_date', '<=', now())
+            ->whereDate('end_date', '>=', now())
+            ->orderBy('start_date', 'desc')
+            ->get();
 
-        if ($isSuperAdmin) {
-            $respostas = Answer::with(['question', 'period', 'tenant'])
-                ->get()
-                ->sortBy(fn($resposta) => $resposta->period->start ?? now());
-
+        if ($role === 'superadmin') {
+            $respostas = Answer::with(['question', 'period', 'tenant'])->get();
             if ($respostas->isEmpty()) {
                 return view('dashboard.index', [
                     'semRespostas' => true,
@@ -65,23 +53,23 @@ class DashboardController extends Controller
             $respostasPorTenant = $respostas->groupBy(fn($r) => $r->tenant->nome ?? 'Empresa desconhecida');
             $analisesPorEmpresa = [];
 
-            foreach ($respostasPorTenant as $nomeEmpresa => $respostasEmpresa) {
+            foreach ($respostasPorTenant as $empresa => $respostasEmpresa) {
                 $grupoPorPeriodo = $respostasEmpresa->groupBy('diagnostic_period_id');
                 $dadosPorCategoria = [];
 
                 $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$dadosPorCategoria, $nomesCategorias) {
                     $periodo = $grupoPeriodo->first()->period;
-                    $periodoLabel = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
+                    $label = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
 
                     $grupoPeriodo->groupBy(fn($r) => $r->question->category)
-                        ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $periodoLabel, $nomesCategorias) {
+                        ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $label, $nomesCategorias) {
                             $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
                             $media = round($grupoCategoria->avg('note'), 2);
-                            $dadosPorCategoria[$nomeLegivel][$periodoLabel] = $media;
+                            $dadosPorCategoria[$nomeLegivel][$label] = $media;
                         });
                 });
 
-                $analisesPorEmpresa[$nomeEmpresa] = $dadosPorCategoria;
+                $analisesPorEmpresa[$empresa] = $dadosPorCategoria;
             }
 
             return view('dashboard.index', [
@@ -90,43 +78,72 @@ class DashboardController extends Controller
             ]);
         }
 
-        if ($isAdmin) {
-            $respostas = Answer::with(['question', 'period'])
-                ->where('tenant_id', $tenantId)
-                ->get()
-                ->sortBy(fn($resposta) => $resposta->period->start ?? now());
+        $respostas = Answer::with(['question', 'period'])
+            ->where('tenant_id', $tenantId)
+            ->get();
 
-            if ($respostas->isEmpty()) {
-                return view('dashboard.index', [
-                    'semRespostas' => true,
-                    'campanhas' => $campanhas
-                ]);
+        $grupoPorPeriodo = $respostas->groupBy('diagnostic_period_id');
+        $evolucaoCategorias = [];
+
+        $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$evolucaoCategorias, $nomesCategorias) {
+            $periodo = $grupoPeriodo->first()->period;
+            if (!$periodo) return;
+
+            $label = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
+
+            $grupoPeriodo->groupBy(fn($resposta) => $resposta->question->category)
+                ->each(function ($grupoCategoria, $categoria) use (&$evolucaoCategorias, $label, $nomesCategorias) {
+                    $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
+                    $media = round($grupoCategoria->avg('note'), 2);
+                    $evolucaoCategorias[$nomeLegivel][$label] = $media;
+                });
+        });
+
+        $diagnostics = Diagnostic::with(['periods', 'questions'])
+            ->whereHas('tenants', fn($q) => $q->where('tenants.id', $tenantId))
+            ->get();
+
+        $diagnosticData = collect();
+
+        foreach ($diagnostics as $diagnostic) {
+            $period = $diagnostic->periods->where('tenant_id', $tenantId)
+                ->filter(fn($p) => $now->between($p->start, $p->end))
+                ->first();
+
+            $questions = $diagnostic->questions->filter(fn($q) => $q->pivot && $q->pivot->target === $role);
+            $hasQuestions = $questions->isNotEmpty();
+
+            $hasAnswered = false;
+            if ($period && $hasQuestions) {
+                $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('diagnostic_period_id', $period->id)
+                    ->where('user_id', $user->id)
+                    ->exists();
             }
 
-            $grupoPorPeriodo = $respostas->groupBy('diagnostic_period_id');
-            $dadosPorCategoria = [];
+            $hasAnsweredAnyPeriod = Answer::where('diagnostic_id', $diagnostic->id)
+                ->where('user_id', $user->id)
+                ->exists();
 
-            $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$dadosPorCategoria, $nomesCategorias) {
-                $periodo = $grupoPeriodo->first()->period;
-                $periodoLabel = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
+            $isAvailable = $period && !$hasAnswered && $hasQuestions;
 
-                $grupoPeriodo->groupBy(fn($resposta) => $resposta->question->category)
-                    ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $periodoLabel, $nomesCategorias) {
-                        $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
-                        $media = round($grupoCategoria->avg('note'), 2);
-                        $dadosPorCategoria[$nomeLegivel][$periodoLabel] = $media;
-                    });
-            });
-
-            return view('dashboard.index', [
-                'evolucaoCategorias' => $dadosPorCategoria,
-                'campanhas' => $campanhas
+            $diagnosticData->push([
+                'diagnostic'            => $diagnostic,
+                'period'                => $period,
+                'questions'             => $questions,
+                'hasQuestions'          => $hasQuestions,
+                'hasAnswered'           => $hasAnswered,
+                'hasAnsweredAnyPeriod'  => $hasAnsweredAnyPeriod,
+                'isAvailable'           => $isAvailable,
             ]);
         }
 
         return view('dashboard.index', [
-            'mensagem'  => 'Bem-vindo! Aqui você verá seus próximos passos ou lembretes da empresa.',
-            'campanhas' => $campanhas
+            'user'                   => $user,
+            'evolucaoCategorias'     => $evolucaoCategorias,
+            'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
+            'diagnostics'            => $diagnosticData->where('isAvailable', false),
+            'campanhas'              => $campanhas
         ]);
     }
 

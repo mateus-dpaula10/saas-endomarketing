@@ -22,7 +22,6 @@ body {
 
     aside {
         width: 240px;
-        min-height: 1000px;
         border-right: 1px solid;
         padding: 2rem 0;
         background-color: $primaria;
@@ -114,8 +113,8 @@ body {
             }
         }
 
-        flex-basis: 0;
-        flex-grow: 1;
+        // flex-basis: 0;
+        // flex-grow: 1;
     }
 }
 
