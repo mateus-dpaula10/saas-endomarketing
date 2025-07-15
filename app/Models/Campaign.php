@@ -12,6 +12,7 @@ class Campaign extends Model
     protected $fillable = [
         'tenant_id',
         'standard_campaign_id',
+        'diagnostic_id',
         'text',
         'description',
         'start_date',
@@ -33,5 +34,9 @@ class Campaign extends Model
     public function standardCampaign()
     {
         return $this->belongsTo(StandardCampaign::class, 'standard_campaign_id');
+    }
+
+    public function diagnostic() {
+        return $this->belongsTo(Diagnostic::class);
     }
 }

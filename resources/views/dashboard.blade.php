@@ -74,7 +74,7 @@
                     </div>
                     <div class="modal-body">
                         <div id="notificationsContent"></div>
-                        @if (Auth::user()->role === 'admin')
+                        @if (Auth::user()->role === 'admin' && $pendingUsersNotifications->isNotEmpty())
                             <hr class="my-4">
                             <h6 class="mb-2">Colaboradores com diagnósticos pendentes</h6>
                             <div id="adminNotificationsContent"></div>
@@ -166,7 +166,7 @@
             dbContainer.innerHTML = '';
 
             if (!dbNotifications.length) {
-                dbContainer.innerHTML = '<p class="text-muted">Nenhuma notificação geral.</p>';
+                dbContainer.innerHTML = '<p class="text-muted mb-0">Nenhuma notificação geral.</p>';
             } else {
                 dbNotifications.forEach(notif => {
                     const createdAt = new Date(notif.created_at).toLocaleString('pt-BR');

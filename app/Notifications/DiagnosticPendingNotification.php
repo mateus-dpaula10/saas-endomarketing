@@ -32,7 +32,7 @@ class DiagnosticPendingNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return [\App\Channels\TenantDatabaseChannel::class];
     }
 
     /**

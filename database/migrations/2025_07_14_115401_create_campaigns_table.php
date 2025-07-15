@@ -22,6 +22,7 @@ return new class extends Migration
             $table->boolean('is_manual')->default(false);  
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
             $table->foreignId('standard_campaign_id')->nullable()->constrained();
+            $table->foreignId('diagnostic_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

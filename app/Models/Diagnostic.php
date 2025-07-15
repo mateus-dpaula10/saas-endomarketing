@@ -27,4 +27,8 @@ class Diagnostic extends Model
     public function periods() {
         return $this->hasMany(DiagnosticPeriod::class);
     }
+
+    public function campaigns() {
+        return $this->hasMany(Campaign::class);
+    }
 }

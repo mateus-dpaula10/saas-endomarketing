@@ -301,7 +301,7 @@ class DiagnosticController extends Controller
      */
     public function destroy(string $id)
     {
-        $diagnostic = Diagnostic::with('questions', 'answers', 'tenants', 'periods')->findOrFail($id);
+        $diagnostic = Diagnostic::with('questions', 'answers', 'tenants', 'periods', 'campaigns')->findOrFail($id);
 
         $diagnostic->delete();
 
@@ -428,6 +428,7 @@ class DiagnosticController extends Controller
                 Campaign::create([
                     'tenant_id'            => $user->tenant_id,
                     'standard_campaign_id' => $campanhaPadrao->id,
+                    'diagnostic_id'        => $diagnostic->id,
                     'text'                 => $campanhaPadrao->text,
                     'description'          => $campanhaPadrao->description,
                     'start_date'           => now(),
