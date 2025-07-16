@@ -21,8 +21,12 @@
                     </div>
 
                     <div class="form-group mt-3">
-                        <label for="dominio" class="form-label">Domínio</label>
-                        <input type="text" class="form-control" name="dominio" id="dominio" value="{{ old('dominio', $empresa->dominio) }}">
+                        <label for="plain" class="form-label">Plano</label>
+                        <select name="plain" id="plain" class="form-select" required>
+                            <option value="basic" {{ old('plain', $empresa->plain ?? '') === 'basic' ? 'selected' : '' }}>Básico</option>
+                            <option value="intermediary" {{ old('plain', $empresa->plain ?? '') === 'intermediary' ? 'selected' : '' }}>Intermediário</option>
+                            <option value="advanced" {{ old('plain', $empresa->plain ?? '') === 'advanced' ? 'selected' : '' }}>Avançado</option>
+                        </select>
                     </div>
 
                     <button type="submit" class="btn btn-outline-primary mt-3">Editar</button>

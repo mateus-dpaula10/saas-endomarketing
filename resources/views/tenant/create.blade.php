@@ -20,8 +20,13 @@
                     </div>
 
                     <div class="form-group mt-3">
-                        <label for="dominio" class="form-label">Domínio</label>
-                        <input type="text" class="form-control" name="dominio" id="dominio">
+                        <label for="plain" class="form-label">Plano</label>
+                        <select name="plain" id="plain" class="form-select" required>
+                            <option value="" selected>Selecione um plano</option>
+                            <option value="basic">Básico</option>
+                            <option value="intermediary">Intermediário</option>
+                            <option value="advanced">Avançado</option>
+                        </select>
                     </div>
 
                     <button type="submit" class="btn btn-outline-primary mt-3">Cadastrar</button>

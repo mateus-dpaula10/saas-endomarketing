@@ -30,11 +30,11 @@ class TenantController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nome'    => 'required|string|max:255',
-            'dominio' => 'nullable|string|unique:tenants,dominio'
+            'nome'    => 'required|string|max:255|unique:tenants,nome',
+            'plain'   => 'required|string|max:255'
         ]);
 
-        Tenant::create($request->only('nome', 'dominio'));
+        Tenant::create($request->only('nome', 'plain'));
 
         return redirect()->route('empresa.index')->with('success', 'Empresa criada com sucesso!');
     }
@@ -65,11 +65,11 @@ class TenantController extends Controller
         $empresa = Tenant::findOrFail($id);
 
         $request->validate([
-            'nome'    => 'required|string|max:255',
-            'dominio' => 'nullable|string|unique:tenants,dominio,' . $empresa->id
+            'nome'    => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
+            'plain' => 'nullable|string|max:255'
         ]);
 
-        $empresa->update($request->only('nome', 'dominio'));
+        $empresa->update($request->only('nome', 'plain'));
 
         return redirect()->route('empresa.index')->with('success', 'Empresa atualizada com sucesso!');
     }
