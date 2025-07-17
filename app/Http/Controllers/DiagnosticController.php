@@ -233,8 +233,6 @@ class DiagnosticController extends Controller
             'description'            => 'nullable|string',
             'questions_text'         => 'required|array',
             'questions_text.*'       => 'nullable|exists:questions,id',
-            'questions_custom'       => 'array',
-            'questions_custom.*'     => 'nullable|string',
             'questions_target'       => 'required|array',
             'questions_target.*'     => 'required|in:admin,user',
             'questions_category'     => 'required|array',
@@ -265,18 +263,9 @@ class DiagnosticController extends Controller
         foreach ($request->questions_text as $index => $questionId) {
             $target   = $request->questions_target[$index] ?? 'admin';
             $category = $request->questions_category[$index] ?? null;
-            $text     = $request->questions_custom[$index] ?? null;
 
             if ($questionId) {
                 $diagnostic->questions()->attach($questionId, ['target' => $target]);
-            } elseif ($text) {
-                $newQuestion = Question::create([
-                    'text'           => $text,
-                    'category'       => $category,
-                    'target'         => $target,
-                    'diagnostic_id'  => $diagnostic->id,
-                ]);
-                $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
             }
         }
         
@@ -309,6 +298,26 @@ class DiagnosticController extends Controller
     public function empresasPorPlano($plainId) {
         $tenants = Tenant::where('plain_id', $plainId)->get(['id', 'nome']);
         return response()->json($tenants);
+    }
+
+    public function getPeriodsByPlain($plainId) {
+        $tenants = Plain::findOrFail($plainId)->tenants; 
+        $diagnostic = Diagnostic::where('plain_id', $plainId)->first(); 
+
+        $result = [];
+
+        foreach ($tenants as $tenant) {
+            $period = $diagnostic
+                ? $diagnostic->periods()->where('tenant_id', $tenant->id)->latest()->first()
+                : null;
+
+            $result[$tenant->id] = $period ? [
+                'start' => optional($period->start)->format('Y-m-d'),
+                'end' => optional($period->end)->format('Y-m-d'),
+            ] : null;
+        }
+
+        return response()->json($result);
     }
 
     /**
@@ -489,13 +498,21 @@ class DiagnosticController extends Controller
 
         $end =  (clone $start)->addDays(7);
 
-        $diagnostic->periods()->updateOrCreate(
-            ['tenant_id' => $tenantId],
-            [
-                'start'  => $start,
-                'end'    => $end,
-            ]
-        );
+        // cria novos periodos para empresa liberada
+        $diagnostic->periods()->create([
+            'tenant_id' => $tenantId,
+            'start'     => $start,
+            'end'       => $end
+        ]);
+
+        // subscreve novos periodos para empresa liberada
+        // $diagnostic->periods()->updateOrCreate(
+        //     ['tenant_id' => $tenantId],
+        //     [
+        //         'start'  => $start,
+        //         'end'    => $end,
+        //     ]
+        // );
         
         return back()->with('success', 'Novo período de resposta liberado!');
     }

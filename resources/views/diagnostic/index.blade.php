@@ -41,6 +41,7 @@
                                     <th>Descrição</th>
                                     <th>Período</th>
                                     <th>Criado em</th>
+                                    <th>Plano</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
@@ -142,32 +143,38 @@
                                                         <tr>
                                                             <th>Pergunta</th>
                                                             <th>Categoria</th>
-                                                            <th>Função</th>
-                                                            {{-- <th>Colaborador</th> --}}
-                                                            <th>Nota</th>
+                                                            <th>Respostas / média</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         @foreach ($questions as $question)
                                                             @php
                                                                 $respostas = $answers[$question->id] ?? collect();
+                                                                $respostasPorRole = $respostas->groupBy(fn($r) => $r->user->role);
                                                             @endphp
 
                                                             @if ($respostas->isNotEmpty())
-                                                                @foreach ($respostas as $answer)
-                                                                    <tr>
-                                                                        <td>{{ $question->text }}</td>
-                                                                        <td>{{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</td>
-                                                                        <td style="text-transform: lowercase">{{ strtoupper($question->pivot->target === 'admin' ? 'Administrador' : 'Colaborador') }}</td>
-                                                                        {{-- <td>{{ $answer->user->role === 'user' ? 'Colaborador' : 'Administrador' }}</td> --}}
-                                                                        <td>{{ $answer->note }}</td>
-                                                                    </tr>
-                                                                @endforeach
+                                                                <tr>
+                                                                    <td>{{ $question->text }}</td>
+                                                                    <td>{{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</td>
+                                                                    <td>
+                                                                        @foreach (['admin' => 'Administrador', 'user' => 'Colaborador'] as $role => $label)
+                                                                            @php
+                                                                                $grupo = $respostasPorRole[$role] ?? collect();
+                                                                            @endphp
+
+                                                                            @if ($grupo->isNotEmpty())
+                                                                                <div class="mb-1">
+                                                                                    {{ $label }}: {{ $grupo->count() }} resposta(s), média {{ number_format($grupo->avg('note'), 2) }}
+                                                                                </div>
+                                                                            @endif
+                                                                        @endforeach
+                                                                    </td>
+                                                                </tr>
                                                             @else
                                                                 <tr>
                                                                     <td>{{ $question->text }}</td>
                                                                     <td>{{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</td>
-                                                                    <td>{{ strtoupper($question->target) }}</td>
                                                                     <td colspan="2">Sem resposta</td>
                                                                 </tr>
                                                             @endif

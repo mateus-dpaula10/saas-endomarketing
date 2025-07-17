@@ -178,6 +178,7 @@
 @push('scripts')
     <script>
         const tenantLastPeriods = @json($periodsByTenant);
+        const savedPeriods = { ...tenantLastPeriods };
         const perguntasPorCategoria = @json($perguntasPorCategoria); 
 
         let questionIndex = {{ count($diagnostic->questions ?? []) }};
@@ -207,8 +208,6 @@
                 <select name="questions_text[${questionIndex}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, ${questionIndex})">
                     <option value="">Digite outra pergunta...</option>
                 </select>
-
-                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 d-none" placeholder="Digite a pergunta personalizada" />
 
                 <label class="form-label">Público-alvo</label>
                 <select name="questions_target[${questionIndex}]" class="form-select" required>
@@ -282,6 +281,14 @@
                 Array.from(periodsContainer.querySelectorAll('.period-block')).forEach(block => {
                     const tenantId = block.getAttribute('data-tenant-id');
                     if (!selectedTenantIds.includes(tenantId)) {
+                        const startVal = block.querySelector('input[name^="start"]').value;
+                        const endVal = block.querySelector('input[name^="end"]').value;
+
+                        savedPeriods[tenantId] = {
+                            start: startVal,
+                            end: endVal
+                        };
+
                         block.remove();
                     }
                 });
@@ -307,11 +314,9 @@
                         startInput.setAttribute('required', 'required');
                         endInput.setAttribute('required', 'required');
 
-                        if (tenantLastPeriods[id]) {
-                            const startVal = tenantLastPeriods[id].start ? tenantLastPeriods[id].start.split(' ')[0] : '';
-                            const endVal = tenantLastPeriods[id].end ? tenantLastPeriods[id].end.split(' ')[0] : '';
-                            startInput.value = startVal;
-                            endInput.value = endVal;
+                        if (savedPeriods[id]) {
+                            startInput.value = savedPeriods[id].start || '';
+                            endInput.value = savedPeriods[id].end || '';
                         }
 
                         periodsContainer.appendChild(newBlock);
@@ -343,7 +348,12 @@
                             tenantsSelect.appendChild(option);
                         });
 
-                        tenantsSelect.dispatchEvent(new Event('change'));
+                        fetch(`/diagnostico/periodos-por-plano/${plainId}`)
+                            .then(resp => resp.json())
+                            .then(periodData => {                                
+                                Object.assign(tenantLastPeriods, periodData);
+                                tenantsSelect.dispatchEvent(new Event('change'));
+                            });
                     });
             });
         });
