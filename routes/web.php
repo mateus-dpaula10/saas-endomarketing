@@ -38,6 +38,7 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
     Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
     Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
     Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
+    Route::get('/diagnostico/empresas-por-plano/{plain}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {

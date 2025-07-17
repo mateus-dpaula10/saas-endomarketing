@@ -44,6 +44,7 @@
         @endif    
     </td>
     <td>{{ $diagnostic->created_at->format('d/m/Y') }}</td>
+    <td>{{ $diagnostic->plain->name }}</td>
     <td>
         @include('diagnostic._diagnostic_actions', [
             'diagnostic' => $diagnostic,

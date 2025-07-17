@@ -11,6 +11,7 @@ use App\Models\Question;
 use App\Models\DiagnosticPeriod;
 use App\Models\StandardCampaign;
 use App\Models\Campaign;
+use App\Models\Plain;
 use Illuminate\Support\Facades\Auth;
 
 class DiagnosticController extends Controller
@@ -101,7 +102,7 @@ class DiagnosticController extends Controller
      */
     public function create()
     {
-        $tenants = Tenant::all();
+        $plains = Plain::all();
 
         $questions = Question::select('id', 'text', 'category')->get();
 
@@ -109,7 +110,7 @@ class DiagnosticController extends Controller
             return $items->map(fn($q) => ['id' => $q->id, 'text' => $q->text])->values();
         });
 
-        return view ('diagnostic.create', compact('tenants', 'perguntasPorCategoria'));
+        return view ('diagnostic.create', compact('plains', 'perguntasPorCategoria'));
     }
 
     /**
@@ -128,44 +129,42 @@ class DiagnosticController extends Controller
             'questions_target.*'     => 'required|in:admin,user',
             'questions_category'     => 'required|array',
             'questions_category.*'   => 'nullable|string',
-            'tenants'                => 'required|array',
-            'tenants.*'              => 'exists:tenants,id',
+            'plain_id'               => 'required|exists:plains,id',
             'start'                  => 'required|date',
             'end'                    => 'required|date|after_or_equal:start'
         ]);
 
         $diagnostic = Diagnostic::create([
             'title'       => $request->title,
-            'description' => $request->description
+            'description' => $request->description,
+            'plain_id'    => $request->plain_id
         ]);
 
-        $diagnostic->tenants()->sync($request->tenants);
-
         foreach ($request->questions_text as $index => $questionId) {
-            $text = null;
-            $target = $request->questions_target[$index] ?? null;
+            $text     = $request->questions_custom[$index] ?? null;
+            $target   = $request->questions_target[$index] ?? null;
             $category = $request->questions_category[$index] ?? null;
 
             if ($questionId) {
                 $diagnostic->questions()->attach($questionId, ['target' => $target]);
-            } else {
-                $text = $request->questions_custom[$index] ?? null;
-
-                if ($text) {
-                    $newQuestion = Question::create([
-                        'text' => $text,
-                        'category' => $category,
-                        'target' => $target,
-                        'diagnostic_id' => $diagnostic->id,
-                    ]);
-                    $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
-                }
+            } elseif($text) {
+                $newQuestion = Question::create([
+                    'text' => $text,
+                    'category' => $category,
+                    'target' => $target,
+                    'diagnostic_id' => $diagnostic->id,
+                ]);
+                $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
             }
         }
 
-        foreach ($request->tenants as $tenantId) {
+        $tenants = Tenant::where('plain_id', $diagnostic->plain_id)->get();
+
+        foreach ($tenants as $tenant) {
+            $diagnostic->tenants()->attach($tenant->id);
+
             $diagnostic->periods()->create([
-                'tenant_id' => $tenantId,
+                'tenant_id' => $tenant->id,
                 'start'     => $request->start,
                 'end'       => $request->end
             ]);
@@ -190,7 +189,7 @@ class DiagnosticController extends Controller
         $diagnostic = Diagnostic::with('questions', 'tenants', 'periods')->findOrFail($id);
 
         $linkedTenants = $diagnostic->tenants;
-        $allTenants = Tenant::all();
+        $allTenants = Tenant::where('plain_id', $diagnostic->plain_id)->get();
 
         $periodsByTenant = [];
         foreach ($linkedTenants as $tenant) {
@@ -210,12 +209,15 @@ class DiagnosticController extends Controller
             ])->values();
         });
 
+        $plains = Plain::all();
+
         return view('diagnostic.edit', compact(
             'diagnostic',
             'linkedTenants',
             'allTenants',
             'periodsByTenant',
-            'perguntasPorCategoria'
+            'perguntasPorCategoria',
+            'plains'
         ));
     }
 
@@ -237,14 +239,17 @@ class DiagnosticController extends Controller
             'questions_target.*'     => 'required|in:admin,user',
             'questions_category'     => 'required|array',
             'questions_category.*'   => 'nullable|string',
-            'tenants'                => 'required|array',
+            'tenants'                => 'array',
             'tenants.*'              => 'exists:tenants,id',
-            'tenant_ids'             => 'required|array',
+            'tenant_ids'             => 'array',
+            'plain_id'               => 'nullable|exists:plains,id'
         ];
 
-        foreach ($request->input('tenant_ids', []) as $tenantId) {
-            $rules["start.$tenantId"] = 'required|date';
-            $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
+        if ($request->filled('tenant_ids')) {
+            foreach ($request->input('tenant_ids', []) as $tenantId) {
+                $rules["start.$tenantId"] = 'required|date';
+                $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
+            }
         }
 
         $request->validate($rules);
@@ -252,6 +257,7 @@ class DiagnosticController extends Controller
         $diagnostic->update([
             'title'       => $request->title,
             'description' => $request->description,
+            'plain_id'    => $request->plain_id
         ]);
 
         $diagnostic->questions()->detach();
@@ -275,11 +281,15 @@ class DiagnosticController extends Controller
         }
         
         $selectedTenantIds = $request->input('tenants', []);
-        $diagnostic->tenants()->sync($selectedTenantIds);
+
+        $diagnostic->tenants()->sync($selectedTenantIds ?? []);
 
         $diagnostic->periods()
-            ->whereNotIn('tenant_id', $selectedTenantIds)
-            ->delete();
+            ->when(!empty($selectedTenantIds), function ($query) use ($selectedTenantIds) {
+                $query->whereNotIn('tenant_id', $selectedTenantIds);
+            }, function ($query) {
+                $query->delete(); 
+            })->delete();
 
         foreach ($selectedTenantIds as $tenantId) {
             $start = $request->start[$tenantId] ?? null;
@@ -294,6 +304,11 @@ class DiagnosticController extends Controller
         }
 
         return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico atualizado com sucesso!');
+    }
+
+    public function empresasPorPlano($plainId) {
+        $tenants = Tenant::where('plain_id', $plainId)->get(['id', 'nome']);
+        return response()->json($tenants);
     }
 
     /**
@@ -456,7 +471,7 @@ class DiagnosticController extends Controller
             abort(403, 'Acesso não autorizado.');
         }
 
-        $diagnostic = Diagnostic::with('periods')->findOrFail($id);
+        $diagnostic = Diagnostic::with('periods', 'tenants')->findOrFail($id);
         $tenantId = $request->get('tenant');
 
         if (!$tenantId || !$diagnostic->tenants->contains('id', $tenantId)) {
@@ -474,11 +489,13 @@ class DiagnosticController extends Controller
 
         $end =  (clone $start)->addDays(7);
 
-        $diagnostic->periods()->create([
-            'start'     => $start,
-            'end'       => $end,
-            'tenant_id' => $tenantId
-        ]);
+        $diagnostic->periods()->updateOrCreate(
+            ['tenant_id' => $tenantId],
+            [
+                'start'  => $start,
+                'end'    => $end,
+            ]
+        );
         
         return back()->with('success', 'Novo período de resposta liberado!');
     }

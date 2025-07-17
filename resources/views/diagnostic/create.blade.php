@@ -35,13 +35,13 @@
                     </div>
 
                     <div class="form-group mt-3">
-                        <label for="tenants" class="form-label">Empresas que terão acesso</label>
-                        <select name="tenants[]" id="tenants" class="form-select" multiple required>
-                            @foreach ($tenants as $tenant)
-                                <option value="{{ $tenant->id }}">{{ $tenant->nome }}</option>
+                        <label for="plain_id" class="form-label">Plano</label>
+                        <select name="plain_id" id="plain_id" class="form-select" required>
+                            <option value="">Selecione um plano</option>
+                            @foreach ($plains as $plain)
+                                <option value="{{ $plain->id }}">{{ $plain->name }}</option>
                             @endforeach
                         </select>
-                        <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
                     </div>
 
                     <div class="form-group mt-3">

@@ -65,6 +65,7 @@
                                     <th>Descrição</th>
                                     <th>Período</th>
                                     <th>Criado em</th>
+                                    <th>Plano</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>

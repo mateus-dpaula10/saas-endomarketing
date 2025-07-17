@@ -41,11 +41,23 @@
                     </div>
 
                     <div class="form-group mt-3">
-                        <label for="tenants" class="form-label">Empresas que terão acesso</label>
-                        <select name="tenants[]" id="tenants" class="form-select" multiple required>
+                        <label for="plain_id" class="form-label">Plano</label>
+                        <select name="plain_id" id="plain_id" class="form-select">
+                            <option value="">Selecione um plano</option>
+                            @foreach ($plains as $plain)
+                                <option value="{{ $plain->id }}" {{ $diagnostic->plain_id == $plain->id ? 'selected' : '' }}>
+                                    {{ $plain->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label for="tenants" class="form-label">Empresas associadas</label>
+                        <select name="tenants[]" id="tenants" class="form-select" multiple>
                             @foreach ($allTenants as $tenant)
                                 <option value="{{ $tenant->id }}" 
-                                    {{ in_array($tenant->id, old('tenants', $diagnostic->tenants->pluck('id')->toArray())) ? 'selected' : '' }}>
+                                    {{ in_array($tenant->id, old('tenants', $linkedTenants->pluck('id')->toArray())) ? 'selected' : '' }}>
                                     {{ $tenant->nome }}
                                 </option>
                             @endforeach
@@ -196,6 +208,8 @@
                     <option value="">Digite outra pergunta...</option>
                 </select>
 
+                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 d-none" placeholder="Digite a pergunta personalizada" />
+
                 <label class="form-label">Público-alvo</label>
                 <select name="questions_target[${questionIndex}]" class="form-select" required>
                     <option value="">Selecione o público</option>
@@ -257,6 +271,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const plainSelect = document.getElementById('plain_id');
             const tenantsSelect = document.getElementById('tenants');
             const periodsContainer = document.getElementById('periods-container');
             const periodTemplate = document.getElementById('period-template').firstElementChild;
@@ -288,6 +303,7 @@
 
                         startInput.name = `start[${id}]`;
                         endInput.name = `end[${id}]`;
+
                         startInput.setAttribute('required', 'required');
                         endInput.setAttribute('required', 'required');
 
@@ -303,8 +319,33 @@
                 });
             }
 
-            atualizarPeriodos(); 
             tenantsSelect.addEventListener('change', atualizarPeriodos);
+            atualizarPeriodos(); 
+
+            plainSelect.addEventListener('change', function () {
+                const plainId = this.value;
+                
+                if (!plainId) {
+                    tenantsSelect.innerHTML = '';
+                    tenantsSelect.dispatchEvent(new Event('change'));
+                    return;
+                }
+
+                fetch(`/diagnostico/empresas-por-plano/${plainId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        tenantsSelect.innerHTML = '';
+
+                        data.forEach(tenant => {
+                            const option = document.createElement('option');
+                            option.value = tenant.id;
+                            option.text = tenant.nome;
+                            tenantsSelect.appendChild(option);
+                        });
+
+                        tenantsSelect.dispatchEvent(new Event('change'));
+                    });
+            });
         });
     </script>
 @endpush

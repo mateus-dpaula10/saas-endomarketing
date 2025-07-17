@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Diagnostic extends Model
 {
     use HasFactory;
-    protected $fillable = ['tenant_id', 'title', 'description'];
+    protected $fillable = ['title', 'description', 'plain_id'];
 
     public function questions() {
         return $this->belongsToMany(Question::class)
@@ -30,5 +30,9 @@ class Diagnostic extends Model
 
     public function campaigns() {
         return $this->hasMany(Campaign::class);
+    }
+
+    public function plain() {
+        return $this->belongsTo(Plain::class);
     }
 }

@@ -31,16 +31,7 @@
                                     <th scope="row">{{ $index + 1 }}</th>
                                     <td>{{ $empresa->nome }}</td>
                                     <td>
-                                        @php
-                                            $plain = match($empresa->plain) {
-                                                'basic'        => 'Básico', 
-                                                'intermediary' => 'Intermediário', 
-                                                'advanced'     => 'Avançado',
-                                                default        => ''
-                                            };
-                                        @endphp
-
-                                        {{ $plain  }}
+                                        {{ $empresa->plain->name  }}
                                     </td>
                                     <td class="d-flex gap-1 align-items-center">
                                         <a href="{{ route('empresa.edit', $empresa->id) }}" class="btn btn-warning">Editar</a>

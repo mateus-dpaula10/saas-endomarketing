@@ -29,4 +29,8 @@ class StandardCampaignContent extends Model
     {
         return $this->belongsTo(StandardCampaign::class);
     }
+
+    public function plain() {
+        return $this->belongsTo(Plain::class);
+    }
 }

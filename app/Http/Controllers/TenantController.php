@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Tenant;
+use App\Models\Plain;
+use App\Models\Diagnostic;
 
 class TenantController extends Controller
 {
@@ -21,7 +23,9 @@ class TenantController extends Controller
      */
     public function create()
     {
-        return view ('tenant.create');
+        $plains = Plain::get();        
+
+        return view ('tenant.create', compact('plains'));
     }
 
     /**
@@ -30,11 +34,11 @@ class TenantController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'nome'    => 'required|string|max:255|unique:tenants,nome',
-            'plain'   => 'required|string|max:255'
+            'nome'       => 'required|string|max:255|unique:tenants,nome',
+            'plain_id'   => 'required|exists:plains,id'
         ]);
 
-        Tenant::create($request->only('nome', 'plain'));
+        Tenant::create($request->only('nome', 'plain_id'));
 
         return redirect()->route('empresa.index')->with('success', 'Empresa criada com sucesso!');
     }
@@ -52,9 +56,13 @@ class TenantController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Tenant::findOrFail($id);
+        $data = Tenant::with('plain')->findOrFail($id);
+        $plains = Plain::all();
         
-        return view ('tenant.edit', ['empresa' => $data]);
+        return view ('tenant.edit', [
+            'empresa' => $data,
+            'plains'  => $plains
+        ]);
     }
 
     /**
@@ -65,11 +73,47 @@ class TenantController extends Controller
         $empresa = Tenant::findOrFail($id);
 
         $request->validate([
-            'nome'    => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
-            'plain' => 'nullable|string|max:255'
+            'nome'       => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
+            'plain_id'   => 'required|exists:plains,id'
         ]);
+        
+        $oldPlainId = $empresa->plain_id;
+        $newPlainId = $request->plain_id;        
 
-        $empresa->update($request->only('nome', 'plain'));
+        if ($oldPlainId != $newPlainId) {            
+            $oldDiagnostics = Diagnostic::where('plain_id', $oldPlainId)->get();
+            foreach ($oldDiagnostics as $diagnostic) {
+                $diagnostic->tenants()->detach($empresa->id);
+                $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
+            }
+            
+            $newDiagnostics = Diagnostic::where('plain_id', $newPlainId)->get();
+            foreach ($newDiagnostics as $diagnostic) {                
+                $diagnostic->tenants()->syncWithoutDetaching($empresa->id);
+
+                $originalPeriod = $diagnostic->periods->first();
+
+                if (!$originalPeriod) {
+                    $diagnostic->periods()->updateOrCreate(
+                        ['tenant_id' => $empresa->id],
+                        [
+                            'start' => now(),
+                            'end'   => now()->addDays(2)
+                        ]
+                    );
+                } else {
+                    $diagnostic->periods()->updateOrCreate(
+                        ['tenant_id' => $empresa->id],
+                        [
+                            'start' => $originalPeriod->start,
+                            'end'   => $originalPeriod->end,
+                        ]
+                    );
+                }                
+            }
+        }
+
+        $empresa->update($request->only('nome', 'plain_id'));
 
         return redirect()->route('empresa.index')->with('success', 'Empresa atualizada com sucesso!');
     }

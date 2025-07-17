@@ -29,10 +29,7 @@
         @endif
     @endif
 @elseif ($user->role === 'superadmin')
-    @if ($diagnostic->tenants->isNotEmpty())
-        @php $firstTenantId = $diagnostic->tenants->first()->id; @endphp
-        <a href="{{ route('diagnostico.edit', ['diagnostico' => $diagnostic->id, 'tenant' => $firstTenantId]) }}" class="btn btn-warning btn-sm">Editar</a>
-    @endif
+    <a href="{{ route('diagnostico.edit', ['diagnostico' => $diagnostic->id]) }}" class="btn btn-warning btn-sm">Editar</a>
 
     <form action="{{ route('diagnostico.destroy', $diagnostic->id) }}" method="POST" class="d-inline">
         @csrf

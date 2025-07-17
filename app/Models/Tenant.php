@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Tenant extends Model
 {
     use HasFactory;
-    protected $fillable = ['nome', 'plain'];
+    protected $fillable = ['nome', 'plain_id'];
 
     public function users() {
         return $this->hasMany(User::class);
@@ -21,5 +21,9 @@ class Tenant extends Model
     public function notifications()
     {
         return $this->hasMany(Notification::class);
+    }
+
+    public function plain() {
+        return $this->belongsTo(Plain::class);
     }
 }

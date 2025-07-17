@@ -21,11 +21,11 @@
                     </div>
 
                     <div class="form-group mt-3">
-                        <label for="plain" class="form-label">Plano</label>
-                        <select name="plain" id="plain" class="form-select" required>
-                            <option value="basic" {{ old('plain', $empresa->plain ?? '') === 'basic' ? 'selected' : '' }}>Básico</option>
-                            <option value="intermediary" {{ old('plain', $empresa->plain ?? '') === 'intermediary' ? 'selected' : '' }}>Intermediário</option>
-                            <option value="advanced" {{ old('plain', $empresa->plain ?? '') === 'advanced' ? 'selected' : '' }}>Avançado</option>
+                        <label for="plain_id" class="form-label">Plano</label>
+                        <select name="plain_id" id="plain_id" class="form-select" required>
+                            @foreach ($plains as $plain)
+                                <option value="{{ $plain->id }}" {{ old('plain_id', $empresa->plain_id) == $plain->id ? 'selected' : '' }}>{{ $plain->name }}</option>
+                            @endforeach
                         </select>
                     </div>
 
