@@ -126,7 +126,8 @@ class DiagnosticController extends Controller
             'questions_custom'       => 'array',
             'questions_custom.*'     => 'nullable|string',
             'questions_target'       => 'required|array',
-            'questions_target.*'     => 'required|in:admin,user',
+            'questions_target.*'     => 'required|array',
+            'questions_target.*.*'   => 'required|in:admin,user',
             'questions_category'     => 'required|array',
             'questions_category.*'   => 'nullable|string',
             'plain_id'               => 'required|exists:plains,id',
@@ -142,19 +143,20 @@ class DiagnosticController extends Controller
 
         foreach ($request->questions_text as $index => $questionId) {
             $text     = $request->questions_custom[$index] ?? null;
-            $target   = $request->questions_target[$index] ?? null;
+            $targets   = $request->questions_target[$index] ?? [];
             $category = $request->questions_category[$index] ?? null;
 
-            if ($questionId) {
-                $diagnostic->questions()->attach($questionId, ['target' => $target]);
+            if ($questionId) {                
+                $diagnostic->questions()->attach($questionId, ['target' => json_encode($targets)]);                
             } elseif($text) {
                 $newQuestion = Question::create([
-                    'text' => $text,
-                    'category' => $category,
-                    'target' => $target,
+                    'text'          => $text,
+                    'category'      => $category,
+                    'target'        => $targets,
                     'diagnostic_id' => $diagnostic->id,
                 ]);
-                $diagnostic->questions()->attach($newQuestion->id, ['target' => $target]);
+
+                $diagnostic->questions()->attach($newQuestion->id, ['target' => json_encode($targets)]);
             }
         }
 
@@ -234,7 +236,8 @@ class DiagnosticController extends Controller
             'questions_text'         => 'required|array',
             'questions_text.*'       => 'nullable|exists:questions,id',
             'questions_target'       => 'required|array',
-            'questions_target.*'     => 'required|in:admin,user',
+            'questions_target.*'     => 'required|array',
+            'questions_target.*.*'   => 'required|in:admin,user',
             'questions_category'     => 'required|array',
             'questions_category.*'   => 'nullable|string',
             'tenants'                => 'array',
@@ -261,16 +264,25 @@ class DiagnosticController extends Controller
         $diagnostic->questions()->detach();
 
         foreach ($request->questions_text as $index => $questionId) {
-            $target   = $request->questions_target[$index] ?? 'admin';
-            $category = $request->questions_category[$index] ?? null;
+            $targets   = $request->questions_target[$index] ?? [];
+            $category  = $request->questions_category[$index] ?? null;
+            $text      = $request->questions_custom[$index] ?? null;
 
             if ($questionId) {
-                $diagnostic->questions()->attach($questionId, ['target' => $target]);
+                $diagnostic->questions()->attach($questionId, ['target' => json_encode($targets)]);                    
+            } elseif ($text) {
+                $newQuestion = Question::create([
+                    'text'          => $text,
+                    'category'      => $category,
+                    'target'        => $targets,
+                    'diagnostic_id' => $diagnostic->id
+                ]);
+                
+                $diagnostic->questions()->attach($newQuestion->id, ['target' => json_encode($targets)]);
             }
         }
         
         $selectedTenantIds = $request->input('tenants', []);
-
         $diagnostic->tenants()->sync($selectedTenantIds ?? []);
 
         $diagnostic->periods()

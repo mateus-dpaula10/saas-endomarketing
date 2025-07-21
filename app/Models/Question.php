@@ -10,6 +10,8 @@ class Question extends Model
     use HasFactory;
     protected $fillable = ['diagnostic_id', 'text', 'category', 'target'];
 
+    protected $casts = ['target', 'array'];
+
     public function diagnostics() {
         return $this->belongsToMany(Diagnostic::class)->withPivot('target')->withTimestamps();
     }

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('diagnostic_id')->constrained()->onDelete('cascade');
             $table->foreignId('question_id')->constrained()->onDelete('cascade');
-            $table->enum('target', ['admin', 'user']);
+            $table->json('target')->nullable();
             $table->timestamps();
         });
     }

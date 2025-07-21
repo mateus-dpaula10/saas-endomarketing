@@ -66,14 +66,12 @@
                                     <option value="">Digite outra pergunta...</option>
                                 </select>
 
-                                <input type="text" name="questions_custom[0]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
-
                                 <label class="form-label">Público-alvo</label>
-                                <select name="questions_target[0]" class="form-select" required>
-                                    <option value="">Selecione o público</option>
+                                <select name="questions_target[0][]" class="form-select" multiple required>
                                     <option value="admin">Administrador</option>
                                     <option value="user">Colaborador</option>
                                 </select>
+                                <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
                             </div>
                         </div>
                         <button type="button" class="btn btn-secondary mt-2" onclick="addQuestion()">+ Adicionar pergunta</button>
@@ -123,14 +121,12 @@
                     <option value="">Digite outra pergunta...</option>
                 </select>
 
-                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
-
                 <label class="form-label">Público-alvo</label>
-                <select name="questions_target[${questionIndex}]" class="form-select" required>
-                    <option value="">Selecione o público</option>
+                <select name="questions_target[${questionIndex}][]" class="form-select" multiple required>
                     <option value="admin">Administrador</option>
                     <option value="user">Colaborador</option>
                 </select>
+                <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
             `;
             wrapper.appendChild(block);
             questionIndex++;

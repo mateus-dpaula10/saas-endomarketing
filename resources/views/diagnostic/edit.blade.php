@@ -155,11 +155,16 @@
                                     </select>
 
                                     <label class="form-label">Público-alvo</label>
-                                    <select name="questions_target[{{ $index }}]" class="form-select" required>
-                                        <option value="">Selecione o público</option>
-                                        <option value="admin" {{ ($question->pivot->target ?? $question->target) === 'admin' ? 'selected' : '' }}>Administrador</option>
-                                        <option value="user" {{ ($question->pivot->target ?? $question->target) === 'user' ? 'selected' : '' }}>Colaborador</option>
+                                    <select name="questions_target[{{ $index }}][]" class="form-select" multiple required>
+                                        @php
+                                            $targets = is_array($question->target ?? null)
+                                                ? $question->target
+                                                : json_decode($question->pivot->target ?? '[]', true);
+                                        @endphp
+                                        <option value="admin" {{ in_array('admin', $targets) ? 'selected' : '' }}>Administrador</option>
+                                        <option value="user" {{ in_array('user', $targets) ? 'selected' : '' }}>Colaborador</option>
                                     </select>
+                                    <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
                                 </div>
                             @endforeach
                         </div>
@@ -187,12 +192,13 @@
             const wrapper = document.getElementById('questions-wrapper');
             const div = document.createElement('div');
             div.className = 'question-block mb-3 border rounded p-3 position-relative';
+            div.setAttribute('data-index', questionIndex);
 
             div.innerHTML = `
                 <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">Remover</button>
 
                 <label class="form-label">Categoria</label>
-                <select name="questions_category[]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
+                <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
                     <option value="">Selecione uma categoria</option>
                     <option value="comu_inte">Comunicação Interna</option>
                     <option value="reco_valo">Reconhecimento e Valorização</option>
@@ -209,12 +215,14 @@
                     <option value="">Digite outra pergunta...</option>
                 </select>
 
+                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
+
                 <label class="form-label">Público-alvo</label>
-                <select name="questions_target[${questionIndex}]" class="form-select" required>
-                    <option value="">Selecione o público</option>
+                <select name="questions_target[${questionIndex}][]" class="form-select" multiple required>
                     <option value="admin">Administrador</option>
                     <option value="user">Colaborador</option>
                 </select>
+                <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
             `;
 
             wrapper.appendChild(div);
@@ -223,40 +231,43 @@
 
         function removeQuestion(button) {
             const block = button.closest('.question-block');
-            if(block) block.remove();
+            if (block) block.remove();
         }
 
         function atualizarPerguntas(select, index) {
             const categoria = select.value;
-            const selectPergunta = document.querySelector(`select[name="questions_text[${index}]"]`);
-            const inputCustom = document.querySelector(`input[name="questions_custom[${index}]"]`);
-
             const perguntas = perguntasPorCategoria[categoria] || [];
 
             const selectedIds = [];
-            document.querySelectorAll('.question-block').forEach((block, idx) => {
-                if (idx === index) return;
+            document.querySelectorAll('.question-block').forEach(block => {
+                const currentIndex = block.getAttribute('data-index');
+                if (parseInt(currentIndex) === index) return;
 
-                const catSelect = block.querySelector(`select[name="questions_category[]"]`);
-                const textSelect = block.querySelector(`select[name^="questions_text["]`);
+                const catSelect = block.querySelector(`select[name="questions_category[${currentIndex}]"]`);
+                const textSelect = block.querySelector(`select[name="questions_text[${currentIndex}]"]`);
                 
                 if (catSelect?.value === categoria && textSelect?.value) {
                     selectedIds.push(textSelect.value);
                 }
             });
 
-            selectPergunta.innerHTML = `<option value="">Digite outra pergunta...</option>`;
+            const questionSelect = document.querySelector(`select[name="questions_text[${index}]"]`);
+            const questionInput = document.querySelector(`input[name="questions_custom[${index}]"]`);
+
+            questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
+
             perguntas.forEach(pergunta => {
                 if (!selectedIds.includes(String(pergunta.id))) {
-                    const opt = document.createElement('option');
-                    opt.value = pergunta.id;
-                    opt.textContent = pergunta.text;
-                    selectPergunta.appendChild(opt);
+                    const option = document.createElement('option');
+                    option.value = pergunta.id;
+                    option.textContent = pergunta.text;
+                    questionSelect.appendChild(option);
                 }
             });
 
-            inputCustom?.classList.remove('d-none');
-            inputCustom.value = '';
+            questionSelect.classList.remove('d-none');
+            questionInput.classList.add('d-none');
+            questionInput.value = '';
         }
 
         function handleQuestionChange(select, index) {
@@ -340,7 +351,6 @@
                     .then(response => response.json())
                     .then(data => {
                         tenantsSelect.innerHTML = '';
-
                         data.forEach(tenant => {
                             const option = document.createElement('option');
                             option.value = tenant.id;
