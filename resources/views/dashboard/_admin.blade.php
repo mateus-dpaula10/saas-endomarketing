@@ -1,4 +1,4 @@
-<button id="exportRelatorioCompleto" class="btn btn-primary my-3 d-block ms-auto">Exportar Relatório Completo em PDF</button>
+<button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
 
 <div id="relatorioCompleto">
     <h5>Relatório Completo dos Diagnósticos</h5>

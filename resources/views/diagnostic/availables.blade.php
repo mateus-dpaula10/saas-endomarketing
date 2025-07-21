@@ -34,11 +34,12 @@
 
                         @php
                             $questions = $diagnostic->questions->filter(function ($q) {
-                                return $q->pivot && $q->pivot->target === Auth::user()->role;
+                                $targets = json_decode($q->pivot->target ?? '[]', true);
+                                return is_array($targets) && in_array(Auth::user()->role, $targets);
                             });
                         @endphp
 
-                        @if ($diagnostic->questions->isEmpty())
+                        @if ($questions->isEmpty())
                             <p class="text-muted bg-light p-3 rounded-1">Nenhuma pergunta disponível para seu perfil.</p>
                         @else
                             <form action="{{ route('diagnostico.answer', $diagnostic->id) }}" method="POST">

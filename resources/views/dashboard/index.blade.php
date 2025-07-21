@@ -6,24 +6,6 @@
     <div class="container dashboard" id="index">
         <div class="row">
             <div class="col-12 py-5">
-                @php
-                    $role = Auth::user()->role;
-                @endphp
-                
-                @if($role === 'superadmin' && isset($analisesPorEmpresa) && count($analisesPorEmpresa))
-                    @include('dashboard._superadmin')
-                @elseif($role === 'admin' && isset($evolucaoCategorias))
-                    @include('dashboard._admin')
-                @elseif($role === 'user')
-                    @include('dashboard._user')
-                @elseif(isset($semRespostas) && $semRespostas)
-                    <div class="alert alert-warning mt-4">
-                        Nenhuma resposta registrada ainda para gerar comparação dos diagnósticos.
-                    </div>
-                @else
-                    <div class="alert alert-info mt-4">Bem-vindo! Dados ainda não disponíveis.</div>
-                @endif
-
                 @if(isset($campanhas) && $campanhas->isNotEmpty())
                     <div class="mt-5">
                         <h4 class="mb-3">Campanhas em andamento</h4>
@@ -42,6 +24,24 @@
                             @endforeach
                         </ul>
                     </div>
+                @endif
+
+                @php
+                    $role = Auth::user()->role;
+                @endphp
+                
+                @if($role === 'superadmin' && isset($analisesPorEmpresa) && count($analisesPorEmpresa))
+                    @include('dashboard._superadmin')
+                @elseif($role === 'admin' && isset($evolucaoCategorias))
+                    @include('dashboard._admin')
+                @elseif($role === 'user')
+                    @include('dashboard._user')
+                @elseif(isset($semRespostas) && $semRespostas)
+                    <div class="alert alert-warning mt-4">
+                        Nenhuma resposta registrada ainda para gerar comparação dos diagnósticos.
+                    </div>
+                @else
+                    <div class="alert alert-info mt-4">Bem-vindo! Dados ainda não disponíveis.</div>
                 @endif
             </div>
         </div>

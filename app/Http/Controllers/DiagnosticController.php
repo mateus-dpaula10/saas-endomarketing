@@ -60,7 +60,13 @@ class DiagnosticController extends Controller
                 ->first();
 
             $questionsForUser = $diagnostic->questions->filter(function ($question) use ($role) {
-                return $question->pivot && $question->pivot->target === $role;
+                if (!$question->pivot || !$question->pivot->target) return false;
+
+                $target = is_string($question->pivot->target)
+                    ? json_decode($question->pivot->target, true)
+                    : $question->pivot->target;
+
+                return is_array($target) && in_array($role, $target);
             });
 
             $hasQuestions = $questionsForUser->isNotEmpty();
@@ -354,9 +360,7 @@ class DiagnosticController extends Controller
         $role = $user->role;
 
         $diagnostic = Diagnostic::with([
-            'questions' => function ($query) use ($role) {
-                $query->where('diagnostic_question.target', $role);
-            },
+            'questions.options',
             'tenants',
             'periods'
         ])->findOrFail($id);
@@ -384,7 +388,11 @@ class DiagnosticController extends Controller
                 ->with('error', 'Você já respondeu este diagnóstico.');
         }
 
-        return view ('diagnostic.availables', compact('diagnostic', 'currentPeriod'));
+        $questions = $diagnostic->questions->filter(function ($question) use ($role) {
+            return in_array($role, json_decode($question->pivot->target ?? '[]'));
+        });
+
+        return view ('diagnostic.availables', compact('diagnostic', 'currentPeriod', 'questions'));
     }
 
     public function submitAnswer(Request $request, string $id) {
@@ -423,7 +431,15 @@ class DiagnosticController extends Controller
             'answers.*' => 'required|integer|min:1|max:5'
         ]);
 
-        $questionsForRole = $diagnostic->questions->filter(fn($q) => $q->pivot && $q->pivot->target === $user->role);
+        $questionsForRole = $diagnostic->questions->filter(function ($q) use ($user) {
+            if (!$q->pivot || !$q->pivot->target) return false;
+
+            $target = is_string($q->pivot->target)
+                ? json_decode($q->pivot->target, true)
+                : $q->pivot->target;
+
+            return is_array($target) && in_array($user->role, $target);
+        });
         $validQuestionIds = $questionsForRole->pluck('id')->toArray();
 
         foreach ($request->answers as $questionId => $note) {
@@ -454,7 +470,7 @@ class DiagnosticController extends Controller
             ->map(fn($grupo) => round($grupo->avg('note'), 1));
             
         foreach ($notasPorCategoria as $categoria => $nota) {
-            Campaign::where('tenant_id', $user->tenant_id)
+            $deleted = Campaign::where('tenant_id', $user->tenant_id)
                 ->where('diagnostic_id', $diagnostic->id)
                 ->where('is_auto', true)
                 ->whereHas('standardCampaign', function ($query) use ($categoria) {

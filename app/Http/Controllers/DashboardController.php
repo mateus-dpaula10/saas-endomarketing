@@ -210,10 +210,23 @@ class DashboardController extends Controller
 
         $diagnosticsNotAnswered = $diagnostics->filter(function($diagnostic) use ($user) {
             $period = $diagnostic->periods->first();
-            return $period && !$diagnostic->answers()
+
+            if (!$period) return false;
+
+            $hasTargetedQuestions = DB::table('diagnostic_question')
+                ->join('questions', 'diagnostic_question.question_id', '=', 'questions.id')
+                ->where('diagnostic_question.diagnostic_id', $diagnostic->id)
+                ->whereJsonContains('diagnostic_question.target', $user->role)
+                ->exists();
+
+            if (!$hasTargetedQuestions) return false;
+
+            $alreadyAnswered = $diagnostic->answers()
                 ->where('user_id', $user->id)
                 ->where('diagnostic_period_id', $period->id)
                 ->exists();
+
+            return !$alreadyAnswered;
         })->values();
 
         $notifications = $diagnosticsNotAnswered->map(function($diag) {

@@ -20,7 +20,7 @@
             @if ($user->role === 'admin')
                 <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                     Visualizar respostas
-                </button>
+                </button>   
             @else
                 <span class="text-muted">Fora do período</span>
             @endif

@@ -60,10 +60,18 @@ class AppServiceProvider extends ServiceProvider
                 $period = $diagnostic->periods->first();
                 if (!$period) return false;
 
-                return !$diagnostic->answers()
+                $alreadyAnswered = $diagnostic->answers()
                     ->where('user_id', $user->id)
                     ->where('diagnostic_period_id', $period->id)
                     ->exists();
+
+                if ($alreadyAnswered) return false;
+
+                $hasTargetedQuestions = $diagnostic->questions()
+                    ->whereJsonContains('diagnostic_question.target', $user->role)
+                    ->exists();
+
+                return $hasTargetedQuestions;
             })->map(function ($diagnostic) {
                 $period = $diagnostic->periods->first();
 
