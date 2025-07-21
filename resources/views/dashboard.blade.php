@@ -130,18 +130,18 @@
             } else {
                 notifications.forEach(notif => {
                     const daysLeft = notif.days_left;
-                    const urgency = daysLeft <= 3 ? 'alert-danger' : 'alert-warning';
+                    const urgency = daysLeft <= 3 ? 'danger' : 'warning';
 
                     let url = `/diagnostico/${notif.diagnostic_id}/answer`;  
 
                     let html = `
-                        <div class="notification-item mb-3 p-2 border rounded alert ${urgency}">
+                        <div class="notification-item mb-3 p-2 border rounded alert alert-${urgency}">
                             <h6>${notif.title}</h6>
                             <p>
                                 Prazo para resposta: 
                                 <strong>${notif.deadline}</strong> (${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''})
                             </p>
-                            <a class="btn btn-outline-danger" href="${url}">Responder</a>
+                            <a class="btn btn-${urgency}" href="${url}">Responder</a>
                     `;
 
                     userContainer.innerHTML += html;

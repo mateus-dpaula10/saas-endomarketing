@@ -29,12 +29,12 @@
         @endif
     @endif
 @elseif ($user->role === 'superadmin')
-    <a href="{{ route('diagnostico.edit', ['diagnostico' => $diagnostic->id]) }}" class="btn btn-warning btn-sm">Editar</a>
+    <a href="{{ route('diagnostico.edit', ['diagnostico' => $diagnostic->id]) }}" class="btn btn-warning btn-sm mb-1">Editar</a>
 
     <form action="{{ route('diagnostico.destroy', $diagnostic->id) }}" method="POST" class="d-inline">
         @csrf
         @method('DELETE')
-        <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+        <button type="submit" class="btn btn-danger btn-sm mb-1">Excluir</button>
     </form>
 
     @if ($diagnostic->tenants->isNotEmpty())
@@ -46,7 +46,7 @@
                     <option value="{{ $tenant->id }}">{{ $tenant->nome }}</option>
                 @endforeach
             </select>
-            <button type="submit" class="btn btn-success btn-sm">Liberar período</button>
+            <button type="submit" class="btn btn-success btn-sm mb-1">Liberar período</button>
         </form>
     @endif
 @endif

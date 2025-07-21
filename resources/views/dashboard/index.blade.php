@@ -7,7 +7,7 @@
         <div class="row">
             <div class="col-12 py-5">
                 @if(isset($campanhas) && $campanhas->isNotEmpty())
-                    <div class="mt-5">
+                    <div>
                         <h4 class="mb-3">Campanhas em andamento</h4>
                         <ul class="list-group">
                             @foreach($campanhas as $campanha)

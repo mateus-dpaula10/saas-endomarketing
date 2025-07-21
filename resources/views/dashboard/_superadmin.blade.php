@@ -1,4 +1,4 @@
-<h4 class="mb-4">Evolução das Categorias por Empresa</h4>
+<h4 class="mb-4 mt-5">Evolução das Categorias por Empresa</h4>
 
 <ul class="nav nav-tabs" id="empresaTabs" role="tablist">
     @foreach($analisesPorEmpresa as $empresa => $dados)

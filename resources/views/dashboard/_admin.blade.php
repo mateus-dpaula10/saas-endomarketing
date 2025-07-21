@@ -1,6 +1,4 @@
-<button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
-
-<div id="relatorioCompleto">
+<div id="relatorioCompleto" class="mt-5">
     <h5>Relatório Completo dos Diagnósticos</h5>
     <p><strong>Empresa:</strong> {{ Auth::user()->tenant->nome ?? '---' }}</p>
 
@@ -51,23 +49,37 @@
                             ->get();
                     @endphp
 
-                    @if ($answers->isNotEmpty())
-                        @foreach ($answers as $answer)
-                            <div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #ddd;">
-                                <p><strong>Pergunta:</strong> {{ $question->text }}</p>
-                                <p><strong>Categoria:</strong> {{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</p>
-                                <p><strong>Função:</strong> {{ $question->pivot->target === 'admin' ? 'Administrador' : 'Colaborador' }}</p>
-                                <p><strong>Nota:</strong> {{ $answer->note }}</p>
-                            </div>
-                        @endforeach
-                    @else
-                        <div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #ddd;">
-                            <p><strong>Pergunta:</strong> {{ $question->text }}</p>
-                            <p><strong>Categoria:</strong> {{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</p>
-                            <p><strong>Função:</strong> {{ $question->pivot->target === 'admin' ? 'Administrador' : 'Colaborador' }}</p>
+                    <div style="margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #ddd;">
+                        <p><strong>Pergunta:</strong> {{ $question->text }}</p>
+                        <p><strong>Categoria:</strong> {{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</p>
+                        <p><strong>Função:</strong> 
+                            @if($question->pivot->target === 'both')
+                                Colaborador e Administrador
+                            @elseif($question->pivot->target === 'admin')
+                                Administrador
+                            @else
+                                Colaborador
+                            @endif
+                        </p>
+
+                        @php
+                            $agrupadasPorRole = $answers->groupBy(fn($a) => $a->user->role ?? 'user');
+                        @endphp
+
+                        @if ($answers->isNotEmpty())
+                            <ul>
+                                @foreach ($agrupadasPorRole as $role => $respostas)
+                                    <li>
+                                        <strong>{{ $role === 'admin' ? 'Administradores' : 'Colaboradores' }}:</strong>
+                                        {{ $respostas->count() }} resposta(s),
+                                        média {{ number_format($respostas->avg('note'), 2) }}
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
                             <p><strong>Status:</strong> Sem resposta</p>
-                        </div>
-                    @endif
+                        @endif
+                    </div>
                 @endforeach
             @endforeach
 
@@ -91,6 +103,8 @@
             <hr style="margin: 20px 0; border: 1px solid #ccc;">
         @endif
     @endforeach
+
+    <button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
 </div>
 
 <script>

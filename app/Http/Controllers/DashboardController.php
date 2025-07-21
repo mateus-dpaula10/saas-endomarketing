@@ -110,7 +110,12 @@ class DashboardController extends Controller
                 ->filter(fn($p) => $now->between($p->start, $p->end))
                 ->first();
 
-            $questions = $diagnostic->questions->filter(fn($q) => $q->pivot && $q->pivot->target === $role);
+            $questions = $diagnostic->questions->filter(function ($q) use ($role) {
+                if (!$q->pivot || !$q->pivot->target) return false;
+
+                $targets = json_decode($q->pivot->target, true);
+                return in_array($role, $targets);
+            });
             $hasQuestions = $questions->isNotEmpty();
 
             $hasAnswered = false;
