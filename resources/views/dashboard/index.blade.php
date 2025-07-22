@@ -6,42 +6,25 @@
     <div class="container dashboard" id="index">
         <div class="row">
             <div class="col-12 py-5">
-                @if(isset($campanhas) && $campanhas->isNotEmpty())
-                    <div>
-                        <h4 class="mb-3">Campanhas em andamento</h4>
-                        <ul class="list-group">
-                            @foreach($campanhas as $campanha)
-                                <li class="list-group-item mt-2" data-bs-toggle="modal" data-bs-target="#campanhaModal{{ $campanha->id }}" style="cursor: pointer">
-                                    <strong>{{ $campanha->text }}</strong><br>
-                                    {{ $campanha->description }}<br>
-                                    <small>
-                                        Vigência:
-                                        {{ \Carbon\Carbon::parse($campanha->start_date)->format('d/m/Y') }}
-                                        até
-                                        {{ \Carbon\Carbon::parse($campanha->end_date)->format('d/m/Y') }}
-                                    </small>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                @php
-                    $role = Auth::user()->role;
-                @endphp
+                @php $role = Auth::user()->role; @endphp
                 
-                @if($role === 'superadmin' && isset($analisesPorEmpresa) && count($analisesPorEmpresa))
+                @if($role === 'superadmin' && isset($analisesPorEmpresa))
                     @include('dashboard._superadmin')
+
                 @elseif($role === 'admin' && isset($evolucaoCategorias))
                     @include('dashboard._admin')
+                    @includeWhen(isset($campanhas) && $campanhas->isNotEmpty(), 'dashboard._campanhas', ['campanhas' => $campanhas])
+
                 @elseif($role === 'user')
                     @include('dashboard._user')
+                    @includeWhen(isset($campanhas) && $campanhas->isNotEmpty(), 'dashboard._campanhas', ['campanhas' => $campanhas])
+                    
                 @elseif(isset($semRespostas) && $semRespostas)
-                    <div class="alert alert-warning mt-4">
+                    <div class="alert alert-warning">
                         Nenhuma resposta registrada ainda para gerar comparação dos diagnósticos.
                     </div>
                 @else
-                    <div class="alert alert-info mt-4">Bem-vindo! Dados ainda não disponíveis.</div>
+                    <div class="alert alert-info">Bem-vindo! Dados ainda não disponíveis.</div>
                 @endif
             </div>
         </div>

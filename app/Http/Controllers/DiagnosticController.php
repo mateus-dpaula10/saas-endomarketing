@@ -470,7 +470,7 @@ class DiagnosticController extends Controller
             ->map(fn($grupo) => round($grupo->avg('note'), 1));
             
         foreach ($notasPorCategoria as $categoria => $nota) {
-            $deleted = Campaign::where('tenant_id', $user->tenant_id)
+            Campaign::where('tenant_id', $user->tenant_id)
                 ->where('diagnostic_id', $diagnostic->id)
                 ->where('is_auto', true)
                 ->whereHas('standardCampaign', function ($query) use ($categoria) {

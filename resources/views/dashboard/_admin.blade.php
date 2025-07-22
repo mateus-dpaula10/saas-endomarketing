@@ -1,4 +1,4 @@
-<div id="relatorioCompleto" class="mt-5">
+<div id="relatorioCompleto">
     <h5>Relatório Completo dos Diagnósticos</h5>
     <p><strong>Empresa:</strong> {{ Auth::user()->tenant->nome ?? '---' }}</p>
 
@@ -103,9 +103,9 @@
             <hr style="margin: 20px 0; border: 1px solid #ccc;">
         @endif
     @endforeach
-
-    <button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
 </div>
+
+<button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
 
 <script>
     const dadosCategorias = {!! json_encode($evolucaoCategorias) !!};
@@ -155,46 +155,51 @@
 
     document.getElementById('exportRelatorioCompleto').addEventListener('click', () => {
         const original = document.getElementById('relatorioCompleto');
-
         const clone = original.cloneNode(true);
 
         const canvasOriginal = original.querySelector('#graficoEvolucao');
         const canvasClone = clone.querySelector('#graficoEvolucao');
+        
         if (canvasOriginal && canvasClone) {
             const img = new Image();
             img.src = canvasOriginal.toDataURL('image/png');
             img.style.maxWidth = '100%';
             img.style.height = 'auto';
-            canvasClone.replaceWith(img);
+
+            img.onload = () => {
+                canvasClone.replaceWith(img);
+
+                const container = document.createElement('div');
+                container.style.position = 'fixed';
+                container.style.top = '-9999px';
+                container.style.left = '-9999px';
+                container.style.zIndex = '-1';
+                container.appendChild(clone);
+                document.body.appendChild(container);
+
+                html2pdf().set({
+                    margin: [0.4, 0.4],
+                    filename: 'relatorio_completo.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true
+                    },
+                    jsPDF: {
+                        unit: 'in',
+                        format: 'a4',
+                        orientation: 'portrait'
+                    },
+                    pagebreak: {
+                        mode: ['css', 'legacy'],
+                        before: '.page-break', 
+                    }
+                }).from(clone).save().then(() => {
+                    container.remove(); 
+                });
+            };
+        } else {
+            html2pdf().from(clone).save();
         }
-
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.top = '0';
-        container.style.left = '0';
-        container.style.width = '0';
-        container.style.height = '0';
-        container.style.overflow = 'hidden';
-        container.style.visibility = 'hidden';
-        container.appendChild(clone);
-        document.body.appendChild(container);
-
-        html2pdf().set({
-            margin: 0.5,
-            filename: 'relatorio_completo.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true
-            },
-            jsPDF: {
-                unit: 'in',
-                format: 'a4',
-                orientation: 'portrait'
-            },
-            pagebreak: { mode: ['css', 'legacy'] } 
-        }).from(clone).save().then(() => {
-            container.remove();
-        });
     });
 </script>

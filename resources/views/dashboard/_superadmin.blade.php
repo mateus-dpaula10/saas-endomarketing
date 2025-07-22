@@ -80,6 +80,33 @@
                     });
                 })();
             </script>
+
+            @php
+                $campanhasEmpresa = $campanhasPorEmpresa[$empresa] ?? collect();
+            @endphp
+
+            <div class="mt-4">
+                <h5>Campanhas Ativas</h5>
+
+                @if($campanhasEmpresa->isEmpty())
+                    <p class="text-muted">Nenhuma campanha ativa para esta empresa.</p>
+                @else
+                    <ul class="list-group">
+                        @foreach($campanhasEmpresa as $campanha)
+                            <li class="list-group-item">
+                                <strong>{{ $campanha->text }}</strong><br>
+                                {{ $campanha->description }}<br>
+                                <small>
+                                    Vigência:
+                                    {{ \Carbon\Carbon::parse($campanha->start_date)->format('d/m/Y') }}
+                                    até
+                                    {{ \Carbon\Carbon::parse($campanha->end_date)->format('d/m/Y') }}
+                                </small>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
         </div>
     @endforeach
 </div>
