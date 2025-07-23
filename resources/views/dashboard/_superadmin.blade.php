@@ -82,7 +82,7 @@
             </script>
 
             @php
-                $campanhasEmpresa = $campanhasPorEmpresa[$empresa] ?? collect();
+                $campanhasEmpresa = collect($campanhasPorEmpresa[$empresa] ?? []);
             @endphp
 
             <div class="mt-4">

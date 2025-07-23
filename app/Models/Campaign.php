@@ -39,4 +39,8 @@ class Campaign extends Model
     public function diagnostic() {
         return $this->belongsTo(Diagnostic::class);
     }
+
+    public function tenant() {
+        return $this->belongsTo(Tenant::class);
+    }
 }

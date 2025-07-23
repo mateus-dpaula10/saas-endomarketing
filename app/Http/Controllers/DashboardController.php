@@ -33,7 +33,7 @@ class DashboardController extends Controller
             'pert_enga' => 'Pertencimento e Engajamento'
         ];
 
-        $campanhas = Campaign::with(['standardCampaign.content'])
+        $campanhas = Campaign::with(['standardCampaign.content', 'tenant'])
             ->where('is_auto', true)
             ->when($role !== 'superadmin', fn($q) => $q->where('tenant_id', $tenantId))
             ->whereDate('start_date', '<=', now())
@@ -72,9 +72,19 @@ class DashboardController extends Controller
                 $analisesPorEmpresa[$empresa] = $dadosPorCategoria;
             }
 
+            $campanhasPorEmpresa = [];
+
+            foreach ($campanhas as $campanha) {
+                $tenant = $campanha->tenant;
+                if (!$tenant) continue;
+
+                $campanhasPorEmpresa[$tenant->nome][] = $campanha;
+            }
+
             return view('dashboard.index', [
-                'analisesPorEmpresa' => $analisesPorEmpresa,
-                'campanhas' => $campanhas
+                'analisesPorEmpresa'  => $analisesPorEmpresa,
+                'campanhas'           => $campanhas,
+                'campanhasPorEmpresa' => $campanhasPorEmpresa
             ]);
         }
 
@@ -145,7 +155,7 @@ class DashboardController extends Controller
 
         return view('dashboard.index', [
             'user'                   => $user,
-            'evolucaoCategorias'     => $evolucaoCategorias,
+            'evolucaoCategorias'     => $evolucaoCategorias ?: null,
             'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
             'diagnostics'            => $diagnosticData->where('isAvailable', false),
             'campanhas'              => $campanhas

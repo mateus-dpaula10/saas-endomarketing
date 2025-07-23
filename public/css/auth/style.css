@@ -68,6 +68,14 @@ body #bloco-login > div:nth-of-type(2) form button {
 body #bloco-login > div:nth-of-type(2) form button:hover {
   background-color: #45586c;
 }
+body #bloco-login > div:nth-of-type(2) form .fa-eye {
+  cursor: pointer;
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 99999;
+}
 body #bloco-login > div:nth-of-type(2) form#form-esqueceu-senha {
   display: none;
 }

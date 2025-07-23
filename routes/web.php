@@ -9,18 +9,22 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminNotificationController;
+use App\Http\Controllers\AdministrationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
 Route::post('/login', [AuthController::class, 'login'])->name('login.login');
+Route::post('/password-reset', [AuthController::class, 'passwordReset'])->name('password.reset');
+Route::get('/admin/password-reset/{user}', [AuthController::class, 'showResetForm'])->name('admin.reset.password.form');
+Route::post('/admin/password-reset/{user}', [AuthController::class, 'resetPassword'])->name('admin.reset.password');
 Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);  
 
-    Route::get('/usuario', [UserController::class, 'index'])->name('usuario.index');
-    Route::get('/usuario/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
-    Route::patch('/usuario/{usuario}', [UserController::class, 'update'])->name('usuario.update');
+    Route::get('/usuarios', [UserController::class, 'index'])->name('usuario.index');
+    Route::get('/usuarios/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
+    Route::patch('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuario.update');
 
     Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
     Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
@@ -45,11 +49,12 @@ Route::middleware(['auth', 'role:superadmin'])->group(function () {
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
     Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
+    Route::get('/administracao', [AdministrationController::class, 'index'])->name('administration.index');
 });
 
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
-    Route::get('/usuario/create', [UserController::class, 'create'])->name('usuario.create');
-    Route::post('/usuario', [UserController::class, 'store'])->name('usuario.store');
+    Route::get('/usuarios/create', [UserController::class, 'create'])->name('usuario.create');
+    Route::post('/usuarios', [UserController::class, 'store'])->name('usuario.store');
 
-    Route::delete('/usuario/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
+    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
 });

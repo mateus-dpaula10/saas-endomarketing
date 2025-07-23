@@ -9,6 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" 
         integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
     <link rel="icon" type="image/png" href="{{ asset('img/logos/sistema-favicon.png') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
+        integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
     <div id="bloco-login">
@@ -21,12 +24,20 @@
 
         <div>
             @if ($errors->any())
-                <div class="alert alert-danger">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <ul class="mb-0">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                </div>
+            @endif
+
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
                 </div>
             @endif
 
@@ -42,7 +53,10 @@
 
                 <div class="form-group mt-4">
                     <label for="password" class="form-label">Senha</label>
-                    <input type="password" name="password" id="password" class="form-control">
+                    <div class="position-relative">
+                        <input type="password" name="password" id="password" class="form-control" style="padding: .375rem 2rem .375rem .75rem">
+                        <i class="fa-solid fa-eye"></i>
+                    </div>
                 </div>
 
                 <button class="mt-4" type="submit" class="">Entrar</button>
@@ -50,7 +64,7 @@
                 <a class="mt-3" href="#" id="esqueceu-senha-login">Esqueceu a senha?</a>
             </form>
 
-            <form id="form-esqueceu-senha" method="POST">
+            <form id="form-esqueceu-senha" method="POST" action="{{ route('password.reset') }}">
                 @csrf
                 
                 <div class="form-group">
@@ -68,5 +82,8 @@
     <script src="{{ asset('js/auth/script.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" 
         integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js" 
+        integrity="sha512-b+nQTCdtTBIRIbraqNEwsjB6UvL3UEMkXnhzd8awtCYh0Kcsjl9uEgwVFVbhoj3uu1DO1ZMacNvLoyJJiNfcvg==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </body>
 </html>

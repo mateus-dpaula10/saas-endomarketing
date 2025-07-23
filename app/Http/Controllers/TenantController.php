@@ -38,7 +38,13 @@ class TenantController extends Controller
             'plain_id'   => 'required|exists:plains,id'
         ]);
 
-        Tenant::create($request->only('nome', 'plain_id'));
+        $tenant = Tenant::create($request->only('nome', 'plain_id'));
+
+        $diagnostics = Plain::find($request->plain_id)?->diagnostics;
+
+        if ($diagnostics && $diagnostics->isNotEmpty()) {
+            $tenant->diagnostics()->attach($diagnostics->pluck('id'));
+        }
 
         return redirect()->route('empresa.index')->with('success', 'Empresa criada com sucesso!');
     }

@@ -41,6 +41,9 @@
                 @if(auth()->user())
                     <li><a href="{{ route('diagnostico.index') }}">Diagnósticos</a></li>
                 @endif
+                @if(auth()->user()->role === 'admin')
+                    <li><a href="{{ route('administration.index') }}">Administrador</a></li>
+                @endif
                 <li>
                     <a href="#" onclick="event.preventDefault(); document.getElementById('form-logout').submit()">      
                         Sair            
@@ -103,6 +106,7 @@
             const aside = document.querySelector('aside');
 
             if (main && aside) {
+                aside.style.height = 'auto';
                 const alturaConteudoTotal = main.scrollHeight;
                 aside.style.height = alturaConteudoTotal + 'px';
             }
@@ -193,6 +197,12 @@
                             <small class="text-muted">Recebido em: ${createdAt}</small>
                         </div>
                     `;
+
+                    if (notif.link) {
+                        html += `<a href="${notif.link}" class="btn btn-sm btn-primary mt-2">Redefinir senha</a>`;
+                    }
+
+                    html += '</div>';
 
                     dbContainer.innerHTML += html;
                 });

@@ -85,6 +85,15 @@ body {
                         }
                     }
 
+                    .fa-eye {
+                        cursor: pointer;
+                        position: absolute;
+                        right: .5rem;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        z-index: 99999;
+                    }
+
                     &#form-esqueceu-senha {
                         display: none;
                     }
