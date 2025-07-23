@@ -55,7 +55,7 @@
                     <label for="password" class="form-label">Senha</label>
                     <div class="position-relative">
                         <input type="password" name="password" id="password" class="form-control" style="padding: .375rem 2rem .375rem .75rem">
-                        <i class="fa-solid fa-eye"></i>
+                        <i class="fa-solid fa-eye" id="icon_fa_eye"></i>
                     </div>
                 </div>
 

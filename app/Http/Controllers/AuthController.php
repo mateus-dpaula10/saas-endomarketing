@@ -46,13 +46,25 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Usuário não vínculado a uma empresa.']);
         }
 
-        $admin = $user->tenant->users()->where('role', 'admin')->first();
+        $admins = $user->tenant->users()->where('role', 'admin')->get();
 
-        if (!$admin) {
-            return back()->withErrors(['email' => 'Nenhum administrador encontrado para empresa do usuário fornecido.']);
+        foreach ($admins as $admin) {
+            if (!$admin) {
+                return back()->withErrors(['email' => 'Nenhum administrador encontrado para empresa do usuário fornecido.']);
+            }
+
+            $existingNotification = $admin->notifications()
+                ->where('notifiable_id', $admin->id)
+                ->where('type', 'App\Notifications\ResetPasswordRequestNotification')
+                ->whereJsonContains('data->user_id', $user->id) 
+                ->first();
+
+            if ($existingNotification) {
+                $existingNotification->delete();
+            }
+    
+            $admin->notify(new ResetPasswordRequestNotification($user));
         }
-
-        $admin->notify(new ResetPasswordRequestNotification($user));
 
         return back()->with('success', 'Administrador da sua empresa foi notificado para redefinir sua senha.');
     }
@@ -63,14 +75,41 @@ class AuthController extends Controller
 
     public function resetPassword(Request $request, User $user) {
         $request->validate([
-            'password' => 'required|string|min:6|confirmed'
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[A-Z]/', 
+                'regex:/[a-z]/', 
+                'regex:/[0-9]/', 
+                'regex:/[@$!%*?&]/'
+            ]
+        ], [
+            'password.regex' => 'A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.',
+            'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
+            'password.confirmed' => 'As senhas não coincidem.',
         ]);
 
-        $user->update([
-            'password' => bcrypt($request->password)
-        ]);
+        try {            
+            $user->update([
+                'password' => bcrypt($request->password)
+            ]);
 
-        // return redirect()->route()
+            $admins = $user->tenant->users()->where('role', 'admin')->get();
+
+            foreach ($admins as $admin) {
+                $admin->notifications()
+                    ->where('notifiable_id', $admin->id)
+                    ->where('type', 'App\Notifications\ResetPasswordRequestNotification')
+                    ->whereJsonContains('data->user_id', $user->id)  
+                    ->delete();
+            }
+            
+            return redirect()->route('administration.index')->with('success', 'Senha redefinida com sucesso.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Ocorreu um erro ao tentar redefinir a senha. Tente novamente.'])->withInput();
+        }
     }
 
     public function logout() {

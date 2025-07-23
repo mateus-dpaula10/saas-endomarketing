@@ -32,10 +32,11 @@ class ResetPasswordRequestNotification extends Notification
     public function toDatabase(object $notifiable)
     {
         return [
-            'title'   => 'Redefinição de senha solicitada',
-            'message' => "O colaborador {$this->userToReset->name} solicitou a redefinição de senha.",
-            'user_id' => $this->userToReset->id,
-            'link'    => route('admin.reset.password.form', $this->userToReset->id)
+            'title'     => 'Redefinição de senha solicitada',
+            'message'   => "O colaborador '{$this->userToReset->name}' solicitou a redefinição de senha.",
+            'user_id'   => $this->userToReset->id,
+            'tenant_id' => $this->userToReset->tenant_id,
+            'link'      => route('admin.reset.password.form', $this->userToReset->id)
         ];
     }
 

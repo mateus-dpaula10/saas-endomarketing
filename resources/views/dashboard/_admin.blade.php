@@ -53,12 +53,25 @@
                         <p><strong>Pergunta:</strong> {{ $question->text }}</p>
                         <p><strong>Categoria:</strong> {{ $nomesCategorias[$question->category] ?? ucfirst($question->category) }}</p>
                         <p><strong>Função:</strong> 
-                            @if($question->pivot->target === 'both')
-                                Colaborador e Administrador
-                            @elseif($question->pivot->target === 'admin')
-                                Administrador
+                            @php
+                                $targets = is_array($question->pivot->target) ? $question->pivot->target : json_decode($question->pivot->target, true);
+                            @endphp
+
+                            @if($targets)
+                                @foreach($targets as $role)
+                                    @if($role === 'user')
+                                        Colaborador
+                                    @elseif($role === 'admin')
+                                        Administrador
+                                    @else
+                                        Não definido
+                                    @endif
+                                    @if(!$loop->last)
+                                        <span>, </span> 
+                                    @endif
+                                @endforeach
                             @else
-                                Colaborador
+                                Não definido
                             @endif
                         </p>
 

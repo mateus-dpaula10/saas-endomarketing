@@ -121,10 +121,11 @@ class AppServiceProvider extends ServiceProvider
                 ->get()
                 ->map(function($notif) {
                     return [
-                        'id' => $notif->id,
-                        'title' => $notif->data['title'] ?? 'Sem título',
-                        'message' => $notif->data['message'] ?? 'Sem mensagem',
+                        'id'         => $notif->id,
+                        'title'      => $notif->data['title'] ?? 'Sem título',
+                        'message'    => $notif->data['message'] ?? 'Sem mensagem',
                         'created_at' => $notif->created_at->toDateTimeString(),
+                        'link'       => $notif->data['link'] ?? null
                     ];
                 });
 

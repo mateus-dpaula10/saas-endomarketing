@@ -11,13 +11,4 @@ document.addEventListener('DOMContentLoaded', () => {
             aside.style.marginLeft = '0px'    
         }
     })
-
-    // const alerts = document.querySelectorAll('.alert')
-    // alerts.forEach(alert => {
-    //     if (alert) {
-    //         setTimeout(() => {
-    //             alert.style.display = 'none'
-    //         }, 5000)
-    //     }
-    // })
 })

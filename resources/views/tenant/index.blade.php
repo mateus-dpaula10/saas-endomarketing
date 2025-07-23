@@ -7,7 +7,10 @@
         <div class="row">
             <div class="col-12 py-5">
                 @if (session('success'))
-                    <p class="alert alert-success">{{ session('success') }}</p>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+                    </div>
                 @endif
 
                 <div class="header">

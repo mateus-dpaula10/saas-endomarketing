@@ -195,11 +195,14 @@
                             <h6>${notif.title}</h6>
                             <p>${notif.message}</p>
                             <small class="text-muted">Recebido em: ${createdAt}</small>
-                        </div>
                     `;
 
                     if (notif.link) {
-                        html += `<a href="${notif.link}" class="btn btn-sm btn-primary mt-2">Redefinir senha</a>`;
+                        html += `
+                            <a href="${notif.link}" class="d-table btn btn-sm btn-primary mt-2">
+                                Redefinir senha
+                            </a>
+                        `;
                     }
 
                     html += '</div>';
