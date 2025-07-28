@@ -3,7 +3,7 @@
 @section('title', 'Dashboard')
 
 @section('content')
-    <div class="container dashboard" id="index">
+    <div class="container-fluid dashboard" id="index">
         <div class="row">
             <div class="col-12 py-5">
                 @php $role = Auth::user()->role; @endphp

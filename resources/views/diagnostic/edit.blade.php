@@ -3,7 +3,7 @@
 @section('title', 'Diagnóstico')
 
 @section('content')
-    <div class="container diagnostico" id="edit">
+    <div class="container-fluid diagnostico" id="edit">
         <div class="row">
             <div class="col-12 py-5">
                 @if (session('success'))
@@ -69,7 +69,7 @@
                         <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
                     </div>
 
-                    <div id="periods-container" class="mt-4">
+                    <div id="periods-container-fluid" class="mt-4">
                         @foreach ($diagnostic->tenants as $tenant)
                             @php
                                 $period = $periodsByTenant[$tenant->id] ?? null;
@@ -287,13 +287,13 @@
         document.addEventListener('DOMContentLoaded', () => {
             const plainSelect = document.getElementById('plain_id');
             const tenantsSelect = document.getElementById('tenants');
-            const periodsContainer = document.getElementById('periods-container');
+            const periodscontainer-fluid = document.getElementById('periods-container-fluid');
             const periodTemplate = document.getElementById('period-template').firstElementChild;
 
             function atualizarPeriodos() {
                 const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value);
 
-                Array.from(periodsContainer.querySelectorAll('.period-block')).forEach(block => {
+                Array.from(periodscontainer-fluid.querySelectorAll('.period-block')).forEach(block => {
                     const tenantId = block.getAttribute('data-tenant-id');
                     if (!selectedTenantIds.includes(tenantId)) {
                         const startVal = block.querySelector('input[name^="start"]').value;
@@ -309,7 +309,7 @@
                 });
 
                 selectedTenantIds.forEach(id => {
-                    if (!periodsContainer.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
+                    if (!periodscontainer-fluid.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
                         const newBlock = periodTemplate.cloneNode(true);
                         newBlock.setAttribute('data-tenant-id', id);
 
@@ -334,7 +334,7 @@
                             endInput.value = savedPeriods[id].end || '';
                         }
 
-                        periodsContainer.appendChild(newBlock);
+                        periodscontainer-fluid.appendChild(newBlock);
                     }
                 });
             }

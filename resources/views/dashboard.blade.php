@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
         integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" 
         crossorigin="anonymous" referrerpolicy="no-referrer">
-    <link rel="icon" type="image/png" href="{{ asset('img/logos/sistema-favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('img/logos/ico-colorido.png') }}">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -21,7 +21,7 @@
         <button id="close-menu">☰</button>
 
         <a href="{{ route('dashboard.index') }}">
-            <img src="{{ asset('img/logos/sistema.png') }}" alt="Logo do sistema Saas">
+            <img src="{{ asset('img/logos/branco.png') }}" alt="Logo do sistema Saas">
         </a>
 
         <nav>
@@ -101,19 +101,14 @@
     </main>
 
     <script>
-        function igualarAltura() {
-            const main = document.querySelector('main');
-            const aside = document.querySelector('aside');
+        document.addEventListener('DOMContentLoaded', () => {
+            const aside = document.querySelector('aside')
+            const toggleAside = document.querySelector('#close-menu')
 
-            if (main && aside) {
-                aside.style.height = 'auto';
-                const alturaConteudoTotal = main.scrollHeight;
-                aside.style.height = alturaConteudoTotal + 'px';
-            }
-        }
-
-        window.addEventListener('load', igualarAltura);
-        window.addEventListener('resize', igualarAltura);
+            toggleAside.addEventListener('click', () => {
+                aside.classList.toggle('opened');
+            })
+        })
 
         const notifications = @json($notifications ?? []);
         const pendingUsersNotifications = @json($pendingUsersNotifications ?? []);
@@ -246,7 +241,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" 
         integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
-    <script src="{{ asset('js/dashboard/script.js') }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/js/all.min.js" 
         integrity="sha512-b+nQTCdtTBIRIbraqNEwsjB6UvL3UEMkXnhzd8awtCYh0Kcsjl9uEgwVFVbhoj3uu1DO1ZMacNvLoyJJiNfcvg==" 
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>

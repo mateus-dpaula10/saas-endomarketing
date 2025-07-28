@@ -8,16 +8,17 @@
     <link rel="stylesheet" href="{{ asset('css/auth/style.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet" 
         integrity="sha384-4Q6Gf2aSP4eDXB8Miphtr37CMZZQ5oXLH2yaXMJ2w8e2ZtHTl7GptT4jmndRuHDT" crossorigin="anonymous">
-    <link rel="icon" type="image/png" href="{{ asset('img/logos/sistema-favicon.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('img/logos/ico-colorido.png') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
         integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" 
         crossorigin="anonymous" referrerpolicy="no-referrer">
+    
 </head>
 <body>
     <div id="bloco-login">
         <div>
             <a href="{{ route('index') }}">
-                <img src="{{ asset('img/logos/sistema.png') }}" alt="Logo do sistema Saas">
+                <img src="{{ asset('img/logos/branco.png') }}" alt="Logo do sistema Saas">
                 <p>Diagnóstico, plano de ação e campanhas para engajar sua equipe.</p>
             </a>
         </div>
@@ -54,8 +55,8 @@
                 <div class="form-group mt-4">
                     <label for="password" class="form-label">Senha</label>
                     <div class="position-relative">
-                        <input type="password" name="password" id="password" class="form-control" style="padding: .375rem 2rem .375rem .75rem">
-                        <i class="fa-solid fa-eye" id="icon_fa_eye"></i>
+                        <input type="password" name="password" id="password" class="form-control">
+                        <i class="bi bi-eye-fill" id="icon_fa_eye" title="Mostrar senha"></i>
                     </div>
                 </div>
 
@@ -64,7 +65,7 @@
                 <a class="mt-3" href="#" id="esqueceu-senha-login">Esqueceu a senha?</a>
             </form>
 
-            <form id="form-esqueceu-senha" method="POST" action="{{ route('password.reset') }}">
+            {{-- <form id="form-esqueceu-senha" method="POST" action="{{ route('password.reset') }}">
                 @csrf
                 
                 <div class="form-group">
@@ -75,7 +76,7 @@
                 <button class="mt-4" type="submit" class="">Enviar link de recuperação</button>
 
                 <a class="mt-3" href="#" id="voltar-login">Voltar ao login</a>
-            </form>
+            </form> --}}
         </div>
     </div>
 

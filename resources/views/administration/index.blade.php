@@ -3,7 +3,7 @@
 @section('title', 'Administração')
 
 @section('content')
-    <div class="container administration" id="index">
+    <div class="container-fluid administration" id="index">
         <div class="row">
             <div class="col-12 py-5">
                 <div class="header">

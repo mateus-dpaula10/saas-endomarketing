@@ -17,7 +17,7 @@
 <body>
     <header class="py-2">
         <nav class="navbar navbar-expand-lg">
-            <div class="container">
+            <div class="container-fluid">
                 <a class="navbar-brand" href="{{ route('index') }}">
                     <img src="{{ asset('img/logos/sistema.png') }}" alt="Logo do sistema Saas">
                 </a>
@@ -58,7 +58,7 @@
     </main>
 
     <footer class="pt-5 pb-3">
-        <div class="container">
+        <div class="container-fluid">
             <div class="row" data-aos="fade-in-up" data-aos-duration="1000">
                 <div class="col-12" id="conteudo-footer">
                     <div>

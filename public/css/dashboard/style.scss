@@ -19,15 +19,29 @@ h1, h2, h3, h4, h5, h6 {
 
 body {
     display: flex;
+    background-color: $primaria !important;
+    padding: .5rem 0 .5rem 0;
 
     aside {
         width: 240px;
-        min-height: 100dvh;
         border-right: 1px solid;
-        padding: 2rem 0;
-        background-color: $primaria;
+        margin-left: 0;
+        padding: 1rem 0;
+        background-color: $primaria-clara;
         position: relative;
         transition: all .35s ease-in-out;
+
+        &.opened {
+            margin-left: -240px;
+        }
+
+        @media (max-width: 768px) {
+            margin-left: -240px;
+
+            &.opened {
+                margin-left: 0;
+            }
+        }
     
         #close-menu {
             position: absolute;
@@ -35,23 +49,24 @@ body {
             top: 0;
             width: 50px;
             height: 50px;
-            background-color: $primaria;
+            background-color: $primaria-clara;
             border: 0;
             color: #FFF;
             border-radius: 0 .25rem .25rem 0;
+            z-index: 9999;
         }
     
         a {
             img {
-                width: 6vw;
+                width: 13vw;
                 min-width: 6rem;
-                margin: 0 auto;
+                padding: 0 2rem;
                 display: block;
             }
         }
     
         nav {
-            padding: 2rem 0;
+            padding: 1rem 0;
             
             ul {
                 padding: 0;
@@ -63,9 +78,10 @@ body {
                     padding: 1rem 2rem;
                     cursor: pointer;
                     color: #FFF;
+                    border-bottom: 1px solid $primaria;
     
-                    &:not(:last-of-type) {
-                        border-bottom: 1px solid $primaria;
+                    &:first-of-type {
+                        border-top: 1px solid $primaria;
                     }
     
                     a {
@@ -94,11 +110,13 @@ body {
         #barra-notificacao {
             width: 100%;
             height: 50px;
-            background-color: $primaria;
+            background-color: $primaria-clara;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             padding-right: 1rem;
+            position: sticky;
+            top: 0;
 
             svg {
                 color: #FFF;
@@ -108,14 +126,13 @@ body {
                     animation: bell-shake 0.6s ease-in-out;
                 }
             }
-
-            svg#icon-notification {
-
-            }
         }
 
         flex-basis: 0;
         flex-grow: 1;
+        overflow: auto;
+        background-color: #FFF;
+        height: 98dvh;
     }
 }
 

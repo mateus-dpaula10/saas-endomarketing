@@ -3,7 +3,7 @@
 @section('title', 'Empresa')
 
 @section('content')
-    <div class="container empresa" id="index">
+    <div class="container-fluid empresa" id="index">
         <div class="row">
             <div class="col-12 py-5">
                 @if (session('success'))
