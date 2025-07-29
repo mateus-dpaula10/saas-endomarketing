@@ -53,7 +53,7 @@ body {
             border: 0;
             color: #FFF;
             border-radius: 0 .25rem .25rem 0;
-            z-index: 9999;
+            z-index: 1000;
         }
     
         a {
@@ -117,6 +117,7 @@ body {
             padding-right: 1rem;
             position: sticky;
             top: 0;
+            z-index: 999;
 
             svg {
                 color: #FFF;

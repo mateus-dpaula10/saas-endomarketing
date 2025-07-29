@@ -115,10 +115,21 @@
 
             <hr style="margin: 20px 0; border: 1px solid #ccc;">
         @endif
+
+        @php
+            $plano = Auth::user()->tenant->plain_id ?? 1;
+        @endphp
+
+        @if ($plano == 2 || $plano == 3)
+            <button 
+                class="btn btn-primary mt-5 d-block ms-auto exportar-relatorio"
+                data-diagnostic-id="{{ $data['diagnostic']->id }}"
+                data-plain-id="{{ $plano }}">
+                Exportar Relatório Completo em PDF
+            </button>
+        @endif
     @endforeach
 </div>
-
-<button id="exportRelatorioCompleto" class="btn btn-primary mt-5 d-block ms-auto">Exportar Relatório Completo em PDF</button>
 
 <script>
     const dadosCategorias = {!! json_encode($evolucaoCategorias) !!};
@@ -166,53 +177,67 @@
         }
     });
 
-    document.getElementById('exportRelatorioCompleto').addEventListener('click', () => {
-        const original = document.getElementById('relatorioCompleto');
-        const clone = original.cloneNode(true);
+    document.querySelectorAll('.exportar-relatorio').forEach(button => {
+        button.addEventListener('click', () => {
+            const plainId = parseInt(button.getAttribute('data-plain-id'));
+            const diagnosticId = button.getAttribute('data-diagnostic-id');
+            const original = document.getElementById('relatorioCompleto');
+            const clone = original.cloneNode(true);
 
-        const canvasOriginal = original.querySelector('#graficoEvolucao');
-        const canvasClone = clone.querySelector('#graficoEvolucao');
-        
-        if (canvasOriginal && canvasClone) {
-            const img = new Image();
-            img.src = canvasOriginal.toDataURL('image/png');
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
+            if (plainId === 2) {
+                const grafico = clone.querySelector('#graficoEvolucao');
+                if (grafico) grafico.remove();
 
-            img.onload = () => {
-                canvasClone.replaceWith(img);
+                const tituloGrafico = [...clone.querySelectorAll('h3, h4, h5')]
+                    .find(el => el.textContent.includes('Gráfico') || el.textContent.includes('Média das Categorias'));
+                if (tituloGrafico) tituloGrafico.remove();
+            }
 
-                const container = document.createElement('div');
-                container.style.position = 'fixed';
-                container.style.top = '-9999px';
-                container.style.left = '-9999px';
-                container.style.zIndex = '-1';
-                container.appendChild(clone);
-                document.body.appendChild(container);
+            if (plainId === 1) {
+                alert('Seu plano não permite exportar relatórios.');
+                return;
+            }
 
+            const canvasOriginal = original.querySelector('#graficoEvolucao');
+            const canvasClone = clone.querySelector('#graficoEvolucao');
+
+            if (plainId === 3 && canvasOriginal && canvasClone) {
+                const img = new Image();
+                img.src = canvasOriginal.toDataURL('image/png');
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+
+                img.onload = () => {
+                    canvasClone.replaceWith(img);
+
+                    const container = document.createElement('div');
+                    container.style.position = 'fixed';
+                    container.style.top = '-9999px';
+                    container.style.left = '-9999px';
+                    container.appendChild(clone);
+                    document.body.appendChild(container);
+
+                    html2pdf().set({
+                        margin: [0.4, 0.4],
+                        filename: `relatorio_diagnostico_${diagnosticId}.pdf`,
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+                        pagebreak: { mode: ['css', 'legacy'] }
+                    }).from(clone).save().then(() => {
+                        container.remove();
+                    });
+                };
+            } else {
                 html2pdf().set({
                     margin: [0.4, 0.4],
-                    filename: 'relatorio_completo.pdf',
+                    filename: `relatorio_diagnostico_${diagnosticId}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: {
-                        scale: 2,
-                        useCORS: true
-                    },
-                    jsPDF: {
-                        unit: 'in',
-                        format: 'a4',
-                        orientation: 'portrait'
-                    },
-                    pagebreak: {
-                        mode: ['css', 'legacy'],
-                        before: '.page-break', 
-                    }
-                }).from(clone).save().then(() => {
-                    container.remove(); 
-                });
-            };
-        } else {
-            html2pdf().from(clone).save();
-        }
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['css', 'legacy'] }
+                }).from(clone).save();
+            }
+        });
     });
 </script>

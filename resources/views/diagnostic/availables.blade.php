@@ -50,15 +50,32 @@
                                 @csrf
                                 <input type="hidden" name="diagnostic_period_id" value="{{ $currentPeriod->id }}">
 
-                                @foreach ($questions as $question)
+                                @foreach ($questions as $index => $question)
                                     <div class="mb-3">
-                                        <label class="form-label">{{ $question->text }}</label>
-                                        <select name="answers[{{ $question->id }}]" class="form-select" required>
-                                            <option value="">Selecione uma opção</option>
-                                                @foreach ($question->options as $option)
-                                                    <option value="{{ $option->value }}">{{ $option->label }}</option>
-                                                @endforeach
-                                        </select>
+                                        <label class="form-label">{{ $index + 1 }} - {{ $question->text }}</label>                                        
+                                        <div>
+                                            @php
+                                                $labels = [
+                                                    1 => 'Discordo totalmente',
+                                                    2 => 'Discordo',
+                                                    3 => 'Neutro',
+                                                    4 => 'Concordo',
+                                                    5 => 'Concordo totalmente'
+                                                ];
+                                            @endphp
+
+                                            @foreach ($labels as $value => $label)
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" 
+                                                        name="answers[{{ $question->id }}]" 
+                                                        id="question_{{ $question->id }}_{{ $value }}"
+                                                        value="{{ $value }}" required>
+                                                    <label class="form-check-label" for="question_{{ $question->id }}_{{ $value }}">
+                                                        {{ $label }}
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                     </div>
                                 @endforeach
 

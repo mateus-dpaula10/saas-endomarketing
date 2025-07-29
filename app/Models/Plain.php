@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Plain extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'price', 'description'];
+    protected $fillable = ['name', 'price', 'characteristics'];
+    protected $casts = ['characteristics' => 'array'];
 
     public function tenants() {
         return $this->hasMany(Tenant::class);

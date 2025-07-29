@@ -27,7 +27,7 @@
         <nav>
             <ul>
                 @if (auth()->user())
-                    <li>Usuário logado: {{ auth()->user()->name }}</li>
+                    <li style="cursor: default">Usuário logado: {{ auth()->user()->name }}</li>
                 @endif
                 @if(auth()->user())
                     <li><a href="{{ route('dashboard.index') }}">Dashboard</a></li>

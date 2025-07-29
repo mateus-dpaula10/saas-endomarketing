@@ -13,6 +13,7 @@ use App\Models\StandardCampaign;
 use App\Models\Campaign;
 use App\Models\Plain;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class DiagnosticController extends Controller
 {
@@ -208,12 +209,14 @@ class DiagnosticController extends Controller
             $periodsByTenant[$tenant->id] = $lastPeriod;
         }
 
-        $questions = Question::whereNull('diagnostic_id')->get();
+        $questions = Question::whereDoesntHave('diagnostics', function ($q) use ($diagnostic) {
+            $q->where('diagnostics.id', $diagnostic->id);
+        })->get();
 
         $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
             return $items->map(fn($q) => [
-                'id' => $q->id,
-                'text' => $q->text
+                'id'     => $q->id,
+                'text'   => $q->text
             ])->values();
         });
 
@@ -246,18 +249,18 @@ class DiagnosticController extends Controller
             'questions_target.*.*'   => 'required|in:admin,user',
             'questions_category'     => 'required|array',
             'questions_category.*'   => 'nullable|string',
-            'tenants'                => 'array',
-            'tenants.*'              => 'exists:tenants,id',
-            'tenant_ids'             => 'array',
+            // 'tenants'                => 'array',
+            // 'tenants.*'              => 'exists:tenants,id',
+            // 'tenant_ids'             => 'array',
             'plain_id'               => 'nullable|exists:plains,id'
         ];
 
-        if ($request->filled('tenant_ids')) {
-            foreach ($request->input('tenant_ids', []) as $tenantId) {
-                $rules["start.$tenantId"] = 'required|date';
-                $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
-            }
-        }
+        // if ($request->filled('tenant_ids')) {
+        //     foreach ($request->input('tenant_ids', []) as $tenantId) {
+        //         $rules["start.$tenantId"] = 'required|date';
+        //         $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
+        //     }
+        // }
 
         $request->validate($rules);
 
@@ -288,27 +291,27 @@ class DiagnosticController extends Controller
             }
         }
         
-        $selectedTenantIds = $request->input('tenants', []);
-        $diagnostic->tenants()->sync($selectedTenantIds ?? []);
+        // $selectedTenantIds = $request->input('tenants', []);
+        // $diagnostic->tenants()->sync($selectedTenantIds ?? []);
 
-        $diagnostic->periods()
-            ->when(!empty($selectedTenantIds), function ($query) use ($selectedTenantIds) {
-                $query->whereNotIn('tenant_id', $selectedTenantIds);
-            }, function ($query) {
-                $query->delete(); 
-            })->delete();
+        // $diagnostic->periods()
+        //     ->when(!empty($selectedTenantIds), function ($query) use ($selectedTenantIds) {
+        //         $query->whereNotIn('tenant_id', $selectedTenantIds);
+        //     }, function ($query) {
+        //         $query->delete(); 
+        //     })->delete();
 
-        foreach ($selectedTenantIds as $tenantId) {
-            $start = $request->start[$tenantId] ?? null;
-            $end   = $request->end[$tenantId] ?? null;
+        // foreach ($selectedTenantIds as $tenantId) {
+        //     $start = $request->start[$tenantId] ?? null;
+        //     $end   = $request->end[$tenantId] ?? null;
 
-            if ($start && $end) {
-                $period = $diagnostic->periods()->firstOrNew(['tenant_id' => $tenantId]);
-                $period->start = Carbon::parse($start);
-                $period->end   = Carbon::parse($end);
-                $period->save();
-            }
-        }
+        //     if ($start && $end) {
+        //         $period = $diagnostic->periods()->firstOrNew(['tenant_id' => $tenantId]);
+        //         $period->start = Carbon::parse($start);
+        //         $period->end   = Carbon::parse($end);
+        //         $period->save();
+        //     }
+        // }
 
         return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico atualizado com sucesso!');
     }
@@ -338,6 +341,24 @@ class DiagnosticController extends Controller
         return response()->json($result);
     }
 
+    public function getPerguntasPorPlano($plainId, $diagnosticId) {   
+        $diagnostic = Diagnostic::with('questions')->findOrFail($diagnosticId);
+        $perguntasAssociadasIds = $diagnostic->questions->pluck('id')->toArray();
+
+        $questionsNaoAssociadas = Question::whereNotIn('id', $perguntasAssociadasIds)->get();
+
+        $allQuestions = $diagnostic->questions->concat($questionsNaoAssociadas);
+
+        $perguntasPorCategoria = $allQuestions->groupBy('category')->map(function ($items) {
+            return $items->map(fn($q) => [
+                'id' => $q->id,
+                'text' => $q->text,
+            ])->values();
+        });
+
+        return response()->json($perguntasPorCategoria);
+    }
+
     /**
      * Remove the specified resource from storage.
      */
@@ -360,7 +381,7 @@ class DiagnosticController extends Controller
         $role = $user->role;
 
         $diagnostic = Diagnostic::with([
-            'questions.options',
+            'questions',
             'tenants',
             'periods'
         ])->findOrFail($id);
@@ -389,7 +410,15 @@ class DiagnosticController extends Controller
         }
 
         $questions = $diagnostic->questions->filter(function ($question) use ($role) {
-            return in_array($role, json_decode($question->pivot->target ?? '[]'));
+            $targetJson = $question->pivot->target;
+
+            if (!is_string($targetJson) || !Str::startsWith($targetJson, '[')) {
+                return false; 
+            }
+
+            $targets = json_decode($targetJson, true);
+
+            return is_array($targets) && in_array($role, $targets);
         });
 
         return view ('diagnostic.availables', compact('diagnostic', 'currentPeriod', 'questions'));
@@ -398,7 +427,7 @@ class DiagnosticController extends Controller
     public function submitAnswer(Request $request, string $id) {
         $user = Auth::user();
 
-        $diagnostic = Diagnostic::with('questions.options', 'periods')
+        $diagnostic = Diagnostic::with('questions', 'periods')
             ->whereHas('tenants', function ($q) use ($user) {
                 $q->where('tenants.id', $user->tenant_id);
             })
@@ -445,10 +474,7 @@ class DiagnosticController extends Controller
         foreach ($request->answers as $questionId => $note) {
             if (!in_array($questionId, $validQuestionIds)) continue;
 
-            $question = $questionsForRole->firstWhere('id', $questionId);
-            $validValues = $question->options->pluck('value')->toArray();
-
-            if (!in_array((int)$note, $validValues)) continue;
+            if (!in_array((int)$note, [1, 2, 3, 4, 5])) continue;
 
             Answer::create([
                 'user_id'              => $user->id,
@@ -468,34 +494,53 @@ class DiagnosticController extends Controller
             
         $notasPorCategoria = $respostas->groupBy(fn($a) => $a->question->category)
             ->map(fn($grupo) => round($grupo->avg('note'), 1));
-            
-        foreach ($notasPorCategoria as $categoria => $nota) {
-            Campaign::where('tenant_id', $user->tenant_id)
-                ->where('diagnostic_id', $diagnostic->id)
-                ->where('is_auto', true)
-                ->whereHas('standardCampaign', function ($query) use ($categoria) {
-                    $query->where('category_code', $categoria);
-                })->delete();
 
-            $campanhaPadrao = StandardCampaign::where('category_code', $categoria)
-                ->where('trigger_max_score', '>=', $nota)
-                ->where('is_active', true)
-                ->orderBy('trigger_max_score')
-                ->first();
+        $plainId = $diagnostic->plain_id;
 
-            if ($campanhaPadrao) {
-                Campaign::create([
-                    'tenant_id'            => $user->tenant_id,
-                    'standard_campaign_id' => $campanhaPadrao->id,
-                    'diagnostic_id'        => $diagnostic->id,
-                    'text'                 => $campanhaPadrao->text,
-                    'description'          => $campanhaPadrao->description,
-                    'start_date'           => now(),
-                    'end_date'             => now()->addWeeks(3),
-                    'is_auto'              => true,
-                    'is_manual'            => false
-                ]);
-            }
+        $planoConfig = [
+            2 => ['count' => 2, 'duration' => 15],
+            3 => ['count' => 3, 'duration' => 10]
+        ];
+
+        if (isset($planoConfig[$plainId])) {
+            $config = $planoConfig[$plainId];
+
+            foreach ($notasPorCategoria as $categoria => $nota) {
+                Campaign::where('tenant_id', $user->tenant_id)
+                    ->where('diagnostic_id', $diagnostic->id)
+                    ->where('is_auto', true)
+                    ->whereHas('standardCampaign', function ($query) use ($categoria) {
+                        $query->where('category_code', $categoria);
+                    })->delete();
+    
+                $campanhaPadrao = StandardCampaign::where('category_code', $categoria)
+                    ->where('trigger_max_score', '>=', $nota)
+                    ->where('is_active', true)
+                    ->orderBy('trigger_max_score')
+                    ->first();
+    
+                if ($campanhaPadrao) {
+                    $startDate = now();
+    
+                    for ($i = 0; $i < $config['count']; $i++) {
+                        $endDate = $startDate->copy()->addDays($config['duration']);
+    
+                        Campaign::create([
+                            'tenant_id'            => $user->tenant_id,
+                            'standard_campaign_id' => $campanhaPadrao->id,
+                            'diagnostic_id'        => $diagnostic->id,
+                            'text'                 => $campanhaPadrao->text,
+                            'description'          => $campanhaPadrao->description,
+                            'start_date'           => $startDate,
+                            'end_date'             => $endDate,
+                            'is_auto'              => true,
+                            'is_manual'            => false
+                        ]);
+    
+                        $startDate = $endDate->copy()->addDay();
+                    }
+                }
+            }            
         }
 
         return redirect()->route('diagnostico.index')->with('success', 'Respostas enviadas com sucesso!');
@@ -520,28 +565,49 @@ class DiagnosticController extends Controller
             ->sortByDesc('end')
             ->first();
 
+        $characteristics = Tenant::find($tenantId)->plain->characteristics;
+
+        $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 0;
+
         $start = $lastPeriod
             ? Carbon::parse($lastPeriod->end)->addDay()
             : now()->startOfDay();
 
-        $end =  (clone $start)->addDays(7);
+        $periodCount = match ($diagnosticsPerMonth) {
+            1       => 1,
+            2       => 2,
+            3       => 3,
+            default => 1
+        };
 
-        // cria novos periodos para empresa liberada
-        $diagnostic->periods()->create([
-            'tenant_id' => $tenantId,
-            'start'     => $start,
-            'end'       => $end
-        ]);
+        $duration = match ($diagnosticsPerMonth) {
+            1       => 30,
+            2       => 15,
+            3       => 10,
+            default => 30
+        };
 
-        // subscreve novos periodos para empresa liberada
-        // $diagnostic->periods()->updateOrCreate(
-        //     ['tenant_id' => $tenantId],
-        //     [
-        //         'start'  => $start,
-        //         'end'    => $end,
-        //     ]
-        // );
+        for ($i = 0; $i < $periodCount; $i++) {
+            $periodStart = (clone $start)->addDays($duration * $i);
+            $periodEnd = (clone $periodStart)->addDays($duration - 1);
+
+            // cria novos periodos para empresa liberada
+            $diagnostic->periods()->create([
+                'tenant_id' => $tenantId,
+                'start'     => $periodStart,
+                'end'       => $periodEnd
+            ]);
+    
+            // subscreve novos periodos para empresa liberada
+            // $diagnostic->periods()->updateOrCreate(
+            //     ['tenant_id' => $tenantId],
+            //     [
+            //         'start'  => $start,
+            //         'end'    => $end,
+            //     ]
+            // );
+        }
         
-        return back()->with('success', 'Novo período de resposta liberado!');
+        return back()->with('success', "{$periodCount} novos(s) período(s) de resposta liberado(s)!");
     }
 }

@@ -15,8 +15,6 @@ return new class extends Migration
             $table->id();
             $table->text('text');
             $table->string('category')->nullable();
-            $table->json('target')->nullable();
-            $table->foreignId('diagnostic_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

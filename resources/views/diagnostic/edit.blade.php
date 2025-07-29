@@ -46,7 +46,7 @@
 
                     <div class="form-group mt-3">
                         <label for="plain_id" class="form-label">Plano</label>
-                        <select name="plain_id" id="plain_id" class="form-select">
+                        <select name="plain_id" id="plain_id" class="form-select" onchange="carregarPerguntasDoPlano(this.value)">
                             <option value="">Selecione um plano</option>
                             @foreach ($plains as $plain)
                                 <option value="{{ $plain->id }}" {{ $diagnostic->plain_id == $plain->id ? 'selected' : '' }}>
@@ -56,7 +56,7 @@
                         </select>
                     </div>
 
-                    <div class="form-group mt-3">
+                    {{-- <div class="form-group mt-3">
                         <label for="tenants" class="form-label">Empresas associadas</label>
                         <select name="tenants[]" id="tenants" class="form-select" multiple>
                             @foreach ($allTenants as $tenant)
@@ -118,7 +118,7 @@
                                 <input type="date" class="form-control end-input">
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
 
                     <div class="form-group mt-4">
                         <label class="form-label'">Perguntas</label>
@@ -133,7 +133,6 @@
 
                                     <label class="form-label">Categoria</label>
                                     <select name="questions_category[]" class="form-select mb-2" required>
-                                        <option value="">Selecione uma categoria</option>
                                         @foreach ([
                                             'comu_inte' => 'Comunicação Interna',
                                             'reco_valo' => 'Reconhecimento e Valorização',
@@ -143,14 +142,13 @@
                                             'lide_gest' => 'Liderança e Gestão',
                                             'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
                                             'pert_enga' => 'Pertencimento e Engajamento'
-                                            ] as $value => $label)
+                                        ] as $value => $label)
                                             <option value="{{ $value }}" {{ $question->category === $value ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
 
                                     <label class="form-label">Texto da pergunta</label>
                                     <select name="questions_text[{{ $index }}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, {{ $index }})">
-                                        <option value="">Digite outra pergunta...</option>
                                         @foreach (($perguntasPorCategoria[$question->category] ?? []) as $pergunta)
                                             <option value="{{ $pergunta['id'] }}" {{ $pergunta['id'] == $question->id ? 'selected' : '' }}>
                                                 {{ $pergunta['text'] }}
@@ -176,7 +174,7 @@
                     </div>
 
                     <div class="form-group mt-4">
-                        <button type="submit" class="btn btn-primary">Editar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>
             </div>
@@ -186,9 +184,9 @@
 
 @push('scripts')
     <script>
-        const tenantLastPeriods = @json($periodsByTenant);
-        const savedPeriods = { ...tenantLastPeriods };
-        const perguntasPorCategoria = @json($perguntasPorCategoria); 
+        // const tenantLastPeriods = @json($periodsByTenant);
+        // const savedPeriods = { ...tenantLastPeriods };
+        let perguntasPorCategoria = @json($perguntasPorCategoria); 
 
         let questionIndex = {{ count($diagnostic->questions ?? []) }};
 
@@ -203,7 +201,6 @@
 
                 <label class="form-label">Categoria</label>
                 <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
-                    <option value="">Selecione uma categoria</option>
                     <option value="comu_inte">Comunicação Interna</option>
                     <option value="reco_valo">Reconhecimento e Valorização</option>
                     <option value="clim_orga">Clima Organizacional</option>
@@ -244,13 +241,8 @@
 
             const selectedIds = [];
             document.querySelectorAll('.question-block').forEach(block => {
-                const currentIndex = block.getAttribute('data-index');
-                if (parseInt(currentIndex) === index) return;
-
-                const catSelect = block.querySelector(`select[name="questions_category[${currentIndex}]"]`);
-                const textSelect = block.querySelector(`select[name="questions_text[${currentIndex}]"]`);
-                
-                if (catSelect?.value === categoria && textSelect?.value) {
+                const textSelect = block.querySelector(`select[name^="questions_text["]`);
+                if (textSelect?.value) {
                     selectedIds.push(textSelect.value);
                 }
             });
@@ -284,92 +276,126 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const plainSelect = document.getElementById('plain_id');
-            const tenantsSelect = document.getElementById('tenants');
-            const periodscontainer-fluid = document.getElementById('periods-container-fluid');
-            const periodTemplate = document.getElementById('period-template').firstElementChild;
+        const diagnosticId = {{ $diagnostic->id }};
 
-            function atualizarPeriodos() {
-                const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value);
-
-                Array.from(periodscontainer-fluid.querySelectorAll('.period-block')).forEach(block => {
-                    const tenantId = block.getAttribute('data-tenant-id');
-                    if (!selectedTenantIds.includes(tenantId)) {
-                        const startVal = block.querySelector('input[name^="start"]').value;
-                        const endVal = block.querySelector('input[name^="end"]').value;
-
-                        savedPeriods[tenantId] = {
-                            start: startVal,
-                            end: endVal
-                        };
-
-                        block.remove();
-                    }
-                });
-
-                selectedTenantIds.forEach(id => {
-                    if (!periodscontainer-fluid.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
-                        const newBlock = periodTemplate.cloneNode(true);
-                        newBlock.setAttribute('data-tenant-id', id);
-
-                        const tenantOption = tenantsSelect.querySelector(`option[value="${id}"]`);
-                        newBlock.querySelector('.tenant-name').textContent = tenantOption?.textContent || 'Empresa';
-
-                        const tenantIdInput = newBlock.querySelector('.tenant-id-input');
-                        tenantIdInput.name = 'tenant_ids[]';
-                        tenantIdInput.value = id;
-
-                        const startInput = newBlock.querySelector('.start-input');
-                        const endInput = newBlock.querySelector('.end-input');
-
-                        startInput.name = `start[${id}]`;
-                        endInput.name = `end[${id}]`;
-
-                        startInput.setAttribute('required', 'required');
-                        endInput.setAttribute('required', 'required');
-
-                        if (savedPeriods[id]) {
-                            startInput.value = savedPeriods[id].start || '';
-                            endInput.value = savedPeriods[id].end || '';
-                        }
-
-                        periodscontainer-fluid.appendChild(newBlock);
-                    }
-                });
+        function carregarPerguntasDoPlano(plainId) {
+            if (!plainId) {
+                perguntasPorCategoria = {};
+                alert('Selecione um plano válido.');
+                return;
             }
 
-            tenantsSelect.addEventListener('change', atualizarPeriodos);
-            atualizarPeriodos(); 
+            fetch(`/diagnostico/perguntas-por-plano/${plainId}/${diagnosticId}`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Erro ao buscar perguntas');
+                    return response.json();
+                })
+                .then(data => {
+                    perguntasPorCategoria = data;
+                    console.log(perguntasPorCategoria);
 
-            plainSelect.addEventListener('change', function () {
-                const plainId = this.value;
-                
-                if (!plainId) {
-                    tenantsSelect.innerHTML = '';
-                    tenantsSelect.dispatchEvent(new Event('change'));
-                    return;
-                }
-
-                fetch(`/diagnostico/empresas-por-plano/${plainId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        tenantsSelect.innerHTML = '';
-                        data.forEach(tenant => {
-                            const option = document.createElement('option');
-                            option.value = tenant.id;
-                            option.text = tenant.nome;
-                            tenantsSelect.appendChild(option);
-                        });
-
-                        fetch(`/diagnostico/periodos-por-plano/${plainId}`)
-                            .then(resp => resp.json())
-                            .then(periodData => {                                
-                                Object.assign(tenantLastPeriods, periodData);
-                                tenantsSelect.dispatchEvent(new Event('change'));
-                            });
+                    document.querySelectorAll('#questions-wrapper .question-block').forEach(block => {
+                        const index = block.getAttribute('data-index');
+                        const categorySelect = block.querySelector(`select[name="questions_category[${index}]"]`);
+                        const questionSelect = block.querySelector(`select[name="questions_text[${index}]"]`);
+                        if (categorySelect && questionSelect) {
+                            categorySelect.value = '';
+                            questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
+                        }
                     });
-            });
-        });
+                })
+                .catch(error => {
+                    console.error('Erro no AJAX:', error);
+                    alert('Não foi possível carregar perguntas para o plano selecionado.');
+                });
+        }
+
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     const plainSelect = document.getElementById('plain_id');
+        //     const tenantsSelect = document.getElementById('tenants');
+        //     const periodscontainer-fluid = document.getElementById('periods-container-fluid');
+        //     const periodTemplate = document.getElementById('period-template').firstElementChild;
+
+        //     function atualizarPeriodos() {
+        //         const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value);
+
+        //         Array.from(periodscontainer-fluid.querySelectorAll('.period-block')).forEach(block => {
+        //             const tenantId = block.getAttribute('data-tenant-id');
+        //             if (!selectedTenantIds.includes(tenantId)) {
+        //                 const startVal = block.querySelector('input[name^="start"]').value;
+        //                 const endVal = block.querySelector('input[name^="end"]').value;
+
+        //                 savedPeriods[tenantId] = {
+        //                     start: startVal,
+        //                     end: endVal
+        //                 };
+
+        //                 block.remove();
+        //             }
+        //         });
+
+        //         selectedTenantIds.forEach(id => {
+        //             if (!periodscontainer-fluid.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
+        //                 const newBlock = periodTemplate.cloneNode(true);
+        //                 newBlock.setAttribute('data-tenant-id', id);
+
+        //                 const tenantOption = tenantsSelect.querySelector(`option[value="${id}"]`);
+        //                 newBlock.querySelector('.tenant-name').textContent = tenantOption?.textContent || 'Empresa';
+
+        //                 const tenantIdInput = newBlock.querySelector('.tenant-id-input');
+        //                 tenantIdInput.name = 'tenant_ids[]';
+        //                 tenantIdInput.value = id;
+
+        //                 const startInput = newBlock.querySelector('.start-input');
+        //                 const endInput = newBlock.querySelector('.end-input');
+
+        //                 startInput.name = `start[${id}]`;
+        //                 endInput.name = `end[${id}]`;
+
+        //                 startInput.setAttribute('required', 'required');
+        //                 endInput.setAttribute('required', 'required');
+
+        //                 if (savedPeriods[id]) {
+        //                     startInput.value = savedPeriods[id].start || '';
+        //                     endInput.value = savedPeriods[id].end || '';
+        //                 }
+
+        //                 periodscontainer-fluid.appendChild(newBlock);
+        //             }
+        //         });
+        //     }
+
+        //     tenantsSelect.addEventListener('change', atualizarPeriodos);
+        //     atualizarPeriodos(); 
+
+        //     plainSelect.addEventListener('change', function () {
+        //         const plainId = this.value;
+                
+        //         if (!plainId) {
+        //             tenantsSelect.innerHTML = '';
+        //             tenantsSelect.dispatchEvent(new Event('change'));
+        //             return;
+        //         }
+
+        //         fetch(`/diagnostico/empresas-por-plano/${plainId}`)
+        //             .then(response => response.json())
+        //             .then(data => {
+        //                 tenantsSelect.innerHTML = '';
+        //                 data.forEach(tenant => {
+        //                     const option = document.createElement('option');
+        //                     option.value = tenant.id;
+        //                     option.text = tenant.nome;
+        //                     tenantsSelect.appendChild(option);
+        //                 });
+
+        //                 fetch(`/diagnostico/periodos-por-plano/${plainId}`)
+        //                     .then(resp => resp.json())
+        //                     .then(periodData => {                                
+        //                         Object.assign(tenantLastPeriods, periodData);
+        //                         tenantsSelect.dispatchEvent(new Event('change'));
+        //                     });
+        //             });
+        //     });
+        // });
     </script>
 @endpush

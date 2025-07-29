@@ -21,40 +21,36 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);  
-
     Route::get('/usuarios', [UserController::class, 'index'])->name('usuario.index');
     Route::get('/usuarios/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
     Route::patch('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuario.update');
-
     Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
     Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
     Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
-
     Route::get('/notificacoes', [DashboardController::class, 'notification'])->name('notification.index');
-});
 
-Route::middleware(['auth', 'role:superadmin'])->group(function () {
-    Route::resource('/empresa', TenantController::class);
-
-    Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
-    Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
-    Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
-    Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
-    Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
-    Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
-    Route::get('/diagnostico/empresas-por-plano/{plainId}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
-    Route::get('/diagnostico/periodos-por-plano/{plainId}', [DiagnosticController::class, 'getPeriodsByPlain'])->name('diagnostico.empresas.periodos.plano');    
-});
-
-Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
-    Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
-    Route::get('/administracao', [AdministrationController::class, 'index'])->name('administration.index');
-});
-
-Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
-    Route::get('/usuarios/create', [UserController::class, 'create'])->name('usuario.create');
-    Route::post('/usuarios', [UserController::class, 'store'])->name('usuario.store');
-
-    Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
+    Route::middleware(['auth', 'role:superadmin'])->group(function () {
+        Route::resource('/empresa', TenantController::class);    
+        Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
+        Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
+        Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
+        Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
+        Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
+        Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
+        Route::get('/diagnostico/empresas-por-plano/{plainId}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
+        Route::get('/diagnostico/periodos-por-plano/{plainId}', [DiagnosticController::class, 'getPeriodsByPlain'])->name('diagnostico.empresas.periodos.plano');    
+        Route::get('/diagnostico/perguntas-por-plano/{plainId}/{diagnosticId}', [DiagnosticController::class, 'getPerguntasPorPlano'])->name('diagnostico.empresas.perguntas.plano');    
+    });
+    
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
+        Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
+        Route::get('/administracao', [AdministrationController::class, 'index'])->name('administration.index');
+    });
+    
+    Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+        Route::get('/usuarios/create', [UserController::class, 'create'])->name('usuario.create');
+        Route::post('/usuarios', [UserController::class, 'store'])->name('usuario.store');    
+        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
+    });
 });

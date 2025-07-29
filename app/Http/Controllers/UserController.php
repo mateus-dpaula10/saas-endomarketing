@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Plain;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 
@@ -76,9 +77,18 @@ class UserController extends Controller
 
             $tenantId = $request->tenant_id;
             $role = $request->role;
-        } else {
+        } else {            
             $tenantId = $authUser->tenant_id;
             $role = 'user';
+        }
+
+        $characteristics = Tenant::find($tenantId)->plain->characteristics;
+        $maxUsersPerPlain = $characteristics['users_limit'] ?? 0;
+
+        $currentUserCount = User::where('tenant_id', $tenantId)->count();
+        
+        if ($currentUserCount >= $maxUsersPerPlain) {
+            return redirect()->back()->withErrors(['limit' => 'Capacidade máxima de usuários do plano foi atingida.']);
         }
 
         User::create([

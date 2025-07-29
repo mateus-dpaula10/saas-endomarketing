@@ -18,20 +18,29 @@
             @endphp
 
             @forelse ($periodsByTenant as $tenantId => $periods)
-                @php $last = $periods->sortByDesc('end')->first(); @endphp
-                @if ($last)
+                @php 
+                    $active = $periods->first(function ($p) {
+                        return now()->between($p->start, $p->end);
+                    });                    
+                @endphp
+                
+                @if ($active)
                     <div class="mb-2">
-                        <strong>{{ $last->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
-                        {{ \Carbon\Carbon::parse($last->start)->format('d/m/Y') }} 
+                        <strong>{{ $active->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
+                        {{ \Carbon\Carbon::parse($active->start)->format('d/m/Y') }} 
                         até 
-                        {{ \Carbon\Carbon::parse($last->end)->format('d/m/Y') }}
+                        {{ \Carbon\Carbon::parse($active->end)->format('d/m/Y') }}
+                    </div>
+                @else
+                    <div class="mb-2 text-muted">
+                        <strong>{{ $periods->first()->tenant->nome ?? 'Empresa' }}:</strong> Nenhum período ativo no momento
                     </div>
                 @endif
             @empty
                 <div class="text-muted">Sem períodos cadastrados</div>
             @endforelse
         @else
-            @if ($period)
+            @if ($period && now()->between($period->start, $period->end))
                 <div>
                     <strong>{{ $period->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
                     {{ \Carbon\Carbon::parse($period->start)->format('d/m/Y') }} 
@@ -39,7 +48,7 @@
                     {{ \Carbon\Carbon::parse($period->end)->format('d/m/Y') }}
                 </div>
             @else 
-                <div class="text-muted">Sem período para sua empresa</div>
+                <div class="text-muted">Sem período ativo para sua empresa</div>
             @endif
         @endif    
     </td>
