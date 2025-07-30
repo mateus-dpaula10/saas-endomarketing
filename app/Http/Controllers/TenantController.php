@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Tenant;
 use App\Models\Plain;
 use App\Models\Diagnostic;
+use Illuminate\Support\Facades\DB;
 
 class TenantController extends Controller
 {
@@ -183,6 +184,15 @@ class TenantController extends Controller
 
         if ($oldPlainId != $newPlainId) {       
             $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
+
+            $novoDiagnostico = Diagnostic::where('plain_id', $newPlainId)->first();
+            if ($novoDiagnostico) {
+                $empresa->diagnostics()->sync([$novoDiagnostico->id]);
+
+                DB::table('diagnostic_periods')
+                    ->where('tenant_id', $empresa->id)
+                    ->update(['diagnostic_id' => $novoDiagnostico->id]);
+            }
         }
 
         if (!$validated['active_tenant']) {

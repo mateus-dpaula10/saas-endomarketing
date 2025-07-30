@@ -82,7 +82,7 @@
                         <input type="date" class="form-control" name="contract_start" id="contract_start" value="{{ old('contract_start', isset($empresa) ? $empresa->contract_start->format('Y-m-d') : date('Y-m-d')) }}" required>
                     </div>
 
-                    <button type="submit" class="btn btn-outline-primary mt-3">Editar</button>
+                    <button type="submit" class="btn btn-outline-primary mt-3">Salvar</button>
                 </form>
             </div>
         </div>
