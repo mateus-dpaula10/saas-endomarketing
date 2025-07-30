@@ -33,17 +33,61 @@ class TenantController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'nome'       => 'required|string|max:255|unique:tenants,nome',
-            'plain_id'   => 'required|exists:plains,id'
-        ]);
+        $validated = $request->validate([
+            'nome'                 => 'required|string|max:255|unique:tenants,nome',
+            'plain_id'             => 'required|exists:plains,id',
+            'cnpj'                 => 'required|string|size:14',
+            'social_reason'        => 'nullable|string|max:255',
+            'fantasy_name'         => 'nullable|string|max:255',
+            'address'              => 'nullable|string|max:255',
+            'bairro'               => 'nullable|string|max:255',
+            'cep'                  => 'nullable|string|max:10',
+            'telephone'            => 'nullable|string|max:20',
+            'contract_start'       => 'required|date',
+            'active_tenant'        => 'required|boolean'
+        ]); 
 
-        $tenant = Tenant::create($request->only('nome', 'plain_id'));
+        $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
 
-        $diagnostics = Plain::find($request->plain_id)?->diagnostics;
+        $tenant = Tenant::create($validated);
+
+        $diagnostics = Plain::find($validated['plain_id'])?->diagnostics;
 
         if ($diagnostics && $diagnostics->isNotEmpty()) {
-            $tenant->diagnostics()->attach($diagnostics->pluck('id'));
+            $tenant->diagnostics()->syncWithoutDetaching($diagnostics->pluck('id'));
+
+            $characteristics = $tenant->plain->characteristics;
+
+            $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 0;
+
+            $periodCount = match ($diagnosticsPerMonth) {
+                1       => 1,
+                2       => 2,
+                3       => 3,
+                default => 1
+            };
+
+            $duration = match ($diagnosticsPerMonth) {
+                1       => 30,
+                2       => 15,
+                3       => 10,
+                default => 30
+            };
+
+            $start = now()->startOfDay();
+
+            foreach ($diagnostics as $diagnostic) {
+                for ($i = 0; $i < $periodCount; $i++) {
+                    $periodStart = (clone $start)->addDays($duration * $i);
+                    $periodEnd   = (clone $periodStart)->addDays($duration - 1);
+
+                    $diagnostic->periods()->create([
+                        'tenant_id' => $tenant->id,
+                        'start'     => $periodStart,
+                        'end'       => $periodEnd
+                    ]);
+                }
+            }
         }
 
         return redirect()->route('empresa.index')->with('success', 'Empresa criada com sucesso!');
@@ -78,48 +122,53 @@ class TenantController extends Controller
     {
         $empresa = Tenant::findOrFail($id);
 
-        $request->validate([
-            'nome'       => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
-            'plain_id'   => 'required|exists:plains,id'
+        $validated = $request->validate([
+            'nome'                 => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
+            'plain_id'             => 'required|exists:plains,id',
+            'cnpj'                 => 'required|string|size:14',
+            'social_reason'        => 'nullable|string|max:255',
+            'fantasy_name'         => 'nullable|string|max:255',
+            'address'              => 'nullable|string|max:255',
+            'bairro'               => 'nullable|string|max:255',
+            'cep'                  => 'nullable|string|max:10',
+            'telephone'            => 'nullable|string|max:20',
+            'contract_start'       => 'required|date',
+            'active_tenant'        => 'required|boolean'
         ]);
+
+        $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
+        $validated['cep'] = isset($validated['cep']) ? preg_replace('/\D/', '', $validated['cep']) : null;
+        $validated['telephone'] = isset($validated['telephone']) ? preg_replace('/\D/', '', $validated['telephone']) : null;
         
         $oldPlainId = $empresa->plain_id;
-        $newPlainId = $request->plain_id;        
+        $newPlainId = $validated['plain_id'];        
 
         if ($oldPlainId != $newPlainId) {            
             $oldDiagnostics = Diagnostic::where('plain_id', $oldPlainId)->get();
+
             foreach ($oldDiagnostics as $diagnostic) {
                 $diagnostic->tenants()->detach($empresa->id);
                 $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
             }
             
             $newDiagnostics = Diagnostic::where('plain_id', $newPlainId)->get();
+
             foreach ($newDiagnostics as $diagnostic) {                
-                $diagnostic->tenants()->syncWithoutDetaching($empresa->id);
+                $diagnostic->tenants()->syncWithoutDetaching([$empresa->id]);
 
-                $originalPeriod = $diagnostic->periods->first();
-
-                if (!$originalPeriod) {
-                    $diagnostic->periods()->updateOrCreate(
-                        ['tenant_id' => $empresa->id],
-                        [
-                            'start' => now(),
-                            'end'   => now()->addDays(2)
-                        ]
-                    );
-                } else {
-                    $diagnostic->periods()->updateOrCreate(
-                        ['tenant_id' => $empresa->id],
-                        [
-                            'start' => $originalPeriod->start,
-                            'end'   => $originalPeriod->end,
-                        ]
-                    );
-                }                
+                $period = $diagnostic->periods()->where('tenant_id', $empresa->id)->first();
+                    
+                $diagnostic->periods()->updateOrCreate(
+                    ['tenant_id' => $empresa->id],
+                    [
+                        'start' => $period?->start ?? now(),
+                        'end'   => $period?->end ?? now()->addDays(2)
+                    ]
+                );              
             }
         }
 
-        $empresa->update($request->only('nome', 'plain_id'));
+        $empresa->update($validated);
 
         return redirect()->route('empresa.index')->with('success', 'Empresa atualizada com sucesso!');
     }

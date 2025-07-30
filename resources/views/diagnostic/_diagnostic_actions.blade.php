@@ -69,7 +69,7 @@
                         ->keyBy('question_id');
                 @endphp
 
-                @foreach ($diagnostic->questions as $question)
+                @foreach ($diagnostic->questions as $index => $question)
                     @php
                         $answer = $answers->get($question->id);
                         $value = $answer->value ?? null;
@@ -79,7 +79,7 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">
-                            {{ $question->text }}
+                            {{ $index + 1 }} - {{ $question->text }}
                             <span class="badge bg-info text-dark ms-2" title="Target">{{ $targets }}</span>
                         </label>
                         <div>

@@ -10,6 +10,7 @@ use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AdministrationController;
+use Illuminate\Support\Facades\Http;
 
 Route::get('/', [HomeController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('login.index');
@@ -39,7 +40,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
         Route::get('/diagnostico/empresas-por-plano/{plainId}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
         Route::get('/diagnostico/periodos-por-plano/{plainId}', [DiagnosticController::class, 'getPeriodsByPlain'])->name('diagnostico.empresas.periodos.plano');    
-        Route::get('/diagnostico/perguntas-por-plano/{plainId}/{diagnosticId}', [DiagnosticController::class, 'getPerguntasPorPlano'])->name('diagnostico.empresas.perguntas.plano');    
+        Route::get('/diagnostico/perguntas-por-plano/{plainId}/{diagnosticId}', [DiagnosticController::class, 'getPerguntasPorPlano'])->name('diagnostico.empresas.perguntas.plano');  
+        Route::get('/consulta-cnpj/{cnpj}', function ($cnpj) {
+            $cnpj = preg_replace('/\D/', '', $cnpj);
+            $response = Http::get("https://www.receitaws.com.br/v1/cnpj/$cnpj");
+            return response()->json($response->json());
+        });
     });
     
     Route::middleware(['auth', 'role:admin'])->group(function () {
