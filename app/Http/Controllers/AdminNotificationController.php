@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use App\Models\Diagnostic;
 use App\Models\User;
 use App\Models\Answer;
+use App\Models\Tenant;
 use App\Notifications\DiagnosticPendingNotification;
 
 class AdminNotificationController extends Controller
@@ -24,7 +25,13 @@ class AdminNotificationController extends Controller
 
         foreach ($diagnostics as $diagnostic) {
             foreach ($diagnostic->periods as $period) {
-                $users = User::where('tenant_id', $period->tenant_id)->get();
+                $tenant = Tenant::find($period->tenant_id);
+
+                if (!$tenant || !$tenant->active_tenant) {
+                    continue;
+                }
+
+                $users = User::where('tenant_id', $tenant->id)->get();
 
                 foreach ($users as $user) {
                     $answered = Answer::where('user_id', $user->id)

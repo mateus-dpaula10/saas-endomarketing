@@ -25,6 +25,7 @@
                                 <th scope="col">#</th>
                                 <th scope="col">Nome</th>
                                 <th scope="col">Plano</th>
+                                <th scope="col">Ativo</th>
                                 <th scope="col">Ações</th>
                             </tr>
                         </thead>
@@ -36,6 +37,7 @@
                                     <td>
                                         {{ $empresa->plain->name  }}
                                     </td>
+                                    <td>{{ $empresa->active_tenant ? 'Sim' : 'Não' }}</td>
                                     <td class="d-flex gap-1 align-items-center">
                                         <a href="{{ route('empresa.edit', $empresa->id) }}" class="btn btn-warning">Editar</a>
 

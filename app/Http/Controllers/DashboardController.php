@@ -22,6 +22,11 @@ class DashboardController extends Controller
         $tenantId = $user->tenant_id;
         $now = Carbon::now();
 
+        $plano = null;
+        if ($role !== 'superadmin') {
+            $plano = $user->tenant->plain_id ?? 1;
+        }
+
         $nomesCategorias = [
             'comu_inte' => 'Comunicação interna',
             'reco_valo' => 'Reconhecimento e Valorização',
@@ -33,24 +38,30 @@ class DashboardController extends Controller
             'pert_enga' => 'Pertencimento e Engajamento'
         ];
 
-        $campanhas = Campaign::with(['standardCampaign.content', 'tenant'])
-            ->where('is_auto', true)
-            ->when($role !== 'superadmin', fn($q) => $q->where('tenant_id', $tenantId))
-            ->whereDate('start_date', '<=', now())
-            ->whereDate('end_date', '>=', now())
-            ->orderBy('start_date', 'desc')
-            ->get();
+        $campanhas = collect();
+        if (in_array($plano, [2, 3]) || $role === 'superadmin') {
+            $campanhas = Campaign::with(['standardCampaign.content', 'tenant'])
+                ->where('is_auto', true)
+                ->when($role !== 'superadmin', fn($q) => $q->where('tenant_id', $tenantId))
+                ->whereDate('start_date', '<=', $now)
+                ->whereDate('end_date', '>=', $now)
+                ->orderBy('start_date', 'desc')
+                ->get();
+        }
 
         if ($role === 'superadmin') {
             $respostas = Answer::with(['question', 'period', 'tenant'])->get();
+
             if ($respostas->isEmpty()) {
                 return view('dashboard.index', [
                     'semRespostas' => true,
-                    'campanhas'    => $campanhas
+                    'campanhas'    => $campanhas,
+                    'plano'        => $plano,
+                    'user'         => $user
                 ]);
             }
 
-            $respostasPorTenant = $respostas->groupBy(fn($r) => $r->tenant->nome ?? 'Empresa desconhecida');
+            $respostasPorTenant = $respostas->groupBy(fn ($r) => $r->tenant->nome ?? 'Empresa desconhecida');
             $analisesPorEmpresa = [];
 
             foreach ($respostasPorTenant as $empresa => $respostasEmpresa) {
@@ -73,18 +84,26 @@ class DashboardController extends Controller
             }
 
             $campanhasPorEmpresa = [];
-
             foreach ($campanhas as $campanha) {
                 $tenant = $campanha->tenant;
                 if (!$tenant) continue;
-
                 $campanhasPorEmpresa[$tenant->nome][] = $campanha;
             }
 
             return view('dashboard.index', [
                 'analisesPorEmpresa'  => $analisesPorEmpresa,
                 'campanhas'           => $campanhas,
-                'campanhasPorEmpresa' => $campanhasPorEmpresa
+                'campanhasPorEmpresa' => $campanhasPorEmpresa,
+                'plano'               => $plano,
+                'user'                => $user
+            ]);
+        }
+
+        if ($plano === 1) {
+            return view('dashboard.index', [
+                'campanhas' => $campanhas,
+                'plano'     => $plano,
+                'user'      => $user
             ]);
         }
 
@@ -122,13 +141,13 @@ class DashboardController extends Controller
 
             $questions = $diagnostic->questions->filter(function ($q) use ($role) {
                 if (!$q->pivot || !$q->pivot->target) return false;
-
                 $targets = json_decode($q->pivot->target, true);
                 return in_array($role, $targets);
             });
-            $hasQuestions = $questions->isNotEmpty();
 
+            $hasQuestions = $questions->isNotEmpty();
             $hasAnswered = false;
+            
             if ($period && $hasQuestions) {
                 $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
                     ->where('diagnostic_period_id', $period->id)
@@ -158,7 +177,8 @@ class DashboardController extends Controller
             'evolucaoCategorias'     => $evolucaoCategorias ?: null,
             'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
             'diagnostics'            => $diagnosticData->where('isAvailable', false),
-            'campanhas'              => $campanhas
+            'campanhas'              => $campanhas,
+            'plano'                  => $plano
         ]);
     }
 

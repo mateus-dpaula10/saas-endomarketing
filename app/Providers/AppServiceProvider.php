@@ -42,6 +42,20 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $now = Carbon::now();
+            $tenant = $user->tenant;
+
+            if (
+                !$tenant || 
+                !$tenant->plain || 
+                !$tenant->plain->characteristics ||
+                !$tenant->active_tenant 
+            ) {
+                $view->with('notifications', collect())
+                    ->with('pendingUsersNotifications', collect())
+                    ->with('dbNotifications', collect())
+                    ->with('notificationCount', 0);
+                return;
+            }
 
             $diagnostics = Diagnostic::whereHas('periods', function ($query) use ($user, $now) {
                 $query->where('tenant_id', $user->tenant_id)

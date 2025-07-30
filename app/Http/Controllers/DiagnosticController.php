@@ -20,15 +20,38 @@ class DiagnosticController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
+    public function index() {
         $user = Auth::user();
         $now = Carbon::now();
         $role = $user->role;
-        $tenantId = $user->tenant_id;
 
-        $diagnosticsQuery = Diagnostic::query();        
+        $tenant = null;
+        $tenantId = null;
 
+        if ($role !== 'superadmin') {
+            $tenantId = $user->tenant_id;
+
+            if (!$tenantId) {
+                abort(403, 'Usuário sem vínculo com empresa.');
+            }
+
+            $tenant = Tenant::with('plain')->findOrFail($tenantId);
+
+            $contractStart = Carbon::parse($tenant->contract_start);
+            $isTenantActive = $tenant->active_tenant;
+
+            if ($now->lt($contractStart) || !$isTenantActive) {
+                return view('diagnostic.index', [
+                    'user' => $user,
+                    'availableDiagnostics' => collect(),
+                    'diagnostics' => collect(),
+                    'error' => 'Contrato ainda não iniciado.'
+                ]);
+            }
+        }
+
+        $diagnosticsQuery = Diagnostic::query();    
+        
         if ($role !== 'superadmin') {
             $diagnosticsQuery->whereHas('tenants', function ($query) use ($tenantId) {
                 $query->where('tenants.id', $tenantId);
@@ -54,10 +77,18 @@ class DiagnosticController extends Controller
 
         foreach ($diagnostics as $diagnostic) {
             $period = $diagnostic->periods
-                ->filter(fn($p) => 
-                    $p->tenant_id == $tenantId &&
-                    $now->between(Carbon::parse($p->start), Carbon::parse($p->end))
-                )
+                ->filter(function ($p) use ($tenant, $now, $role) {
+                    if ($role === 'superadmin') {
+                            return $now->between(Carbon::parse($p->start), Carbon::parse($p->end));
+                        }
+
+                    return 
+                        $tenant &&
+                        $p->tenant_id == $tenant->id &&
+                        $now->between(Carbon::parse($p->start), Carbon::parse($p->end)) &&
+                        $tenant->active_tenant && 
+                        Carbon::parse($tenant->contract_start)->lte(Carbon::parse($p->start));
+                })
                 ->first();
 
             $questionsForUser = $diagnostic->questions->filter(function ($question) use ($role) {
@@ -495,7 +526,7 @@ class DiagnosticController extends Controller
         $notasPorCategoria = $respostas->groupBy(fn($a) => $a->question->category)
             ->map(fn($grupo) => round($grupo->avg('note'), 1));
 
-        $plainId = $diagnostic->plain_id;
+        $plainId = $user->tenant->plain_id ?? 1;
 
         $planoConfig = [
             2 => ['count' => 2, 'duration' => 15],

@@ -115,6 +115,44 @@ class TenantController extends Controller
         ]);
     }
 
+    private function criarPeriodosParaEmpresa(Tenant $empresa, int $plainId) {
+        $empresa->diagnostics->each(function ($diagnostic) use ($empresa) {
+            $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
+        });
+
+        $characteristics = Plain::find($plainId)?->characteristics ?? [];
+        $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 1;
+
+        $periodCount = match ($diagnosticsPerMonth) {
+            1       => 1,
+            2       => 2,
+            3       => 3,
+            default => 1
+        };
+
+        $duration = match ($diagnosticsPerMonth) {
+            1       => 30,
+            2       => 15,
+            3       => 10,
+            default => 30
+        };
+
+        $start = now()->startOfDay();
+
+        foreach ($empresa->diagnostics as $diagnostic) {
+            for ($i = 0; $i < $periodCount; $i++) {
+                $periodStart = (clone $start)->addDays($duration * $i);
+                $periodEnd   = (clone $periodStart)->addDays($duration - 1);
+
+                $diagnostic->periods()->create([
+                    'tenant_id' => $empresa->id,
+                    'start'     => $periodStart,
+                    'end'       => $periodEnd,
+                ]);
+            }
+        }
+    }
+
     /**
      * Update the specified resource in storage.
      */
@@ -143,32 +181,21 @@ class TenantController extends Controller
         $oldPlainId = $empresa->plain_id;
         $newPlainId = $validated['plain_id'];        
 
-        if ($oldPlainId != $newPlainId) {            
-            $oldDiagnostics = Diagnostic::where('plain_id', $oldPlainId)->get();
+        if ($oldPlainId != $newPlainId) {       
+            $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
+        }
 
-            foreach ($oldDiagnostics as $diagnostic) {
-                $diagnostic->tenants()->detach($empresa->id);
+        if (!$validated['active_tenant']) {
+            $empresa->diagnostics->each(function ($diagnostic) use ($empresa) {
                 $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
-            }
-            
-            $newDiagnostics = Diagnostic::where('plain_id', $newPlainId)->get();
-
-            foreach ($newDiagnostics as $diagnostic) {                
-                $diagnostic->tenants()->syncWithoutDetaching([$empresa->id]);
-
-                $period = $diagnostic->periods()->where('tenant_id', $empresa->id)->first();
-                    
-                $diagnostic->periods()->updateOrCreate(
-                    ['tenant_id' => $empresa->id],
-                    [
-                        'start' => $period?->start ?? now(),
-                        'end'   => $period?->end ?? now()->addDays(2)
-                    ]
-                );              
-            }
+            });
         }
 
         $empresa->update($validated);
+
+        if ($oldPlainId == $newPlainId && $validated['active_tenant']) {
+            $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
+        }
 
         return redirect()->route('empresa.index')->with('success', 'Empresa atualizada com sucesso!');
     }

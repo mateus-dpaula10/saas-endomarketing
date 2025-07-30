@@ -52,7 +52,7 @@
                                             (auth()->user()->role === 'admin' && auth()->user()->tenant_id === $usuario->tenant_id && $usuario->role !== 'superadmin') ||
                                             auth()->user()->id === $usuario->id
                                         )
-                                            <a href="{{ route('usuario.edit', $usuario->id) }}" class="btn btn-warning">Editar</a>
+                                            <a href="{{ route('usuario.edit', $usuario->id) }}" class="btn btn-warning btn-sm">Editar</a>
                                         @else
                                             Nenhum ação
                                         @endif
@@ -65,7 +65,7 @@
                                                 @csrf
                                                 @method('DELETE')
         
-                                                <button type="submit" class="btn btn-danger">Excluir</button>
+                                                <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
                                             </form>
                                         @endif
                                     </td>
