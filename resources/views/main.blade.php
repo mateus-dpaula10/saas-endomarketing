@@ -17,9 +17,9 @@
 <body>
     <header class="py-2">
         <nav class="navbar navbar-expand-lg">
-            <div class="container-fluid">
+            <div class="container">
                 <a class="navbar-brand" href="{{ route('index') }}">
-                    <img src="{{ asset('img/logos/sistema.png') }}" alt="Logo do sistema Saas">
+                    <img src="{{ asset('img/logos/branco.png') }}" alt="Logo da Hiato">
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -58,12 +58,12 @@
     </main>
 
     <footer class="pt-5 pb-3">
-        <div class="container-fluid">
+        <div class="container">
             <div class="row" data-aos="fade-in-up" data-aos-duration="1000">
                 <div class="col-12" id="conteudo-footer">
                     <div>
                         <a href="#">
-                            <img src="{{ asset('img/logos/sistema.png') }}" alt="Logo do sistema Saas">
+                            <img src="{{ asset('img/logos/branco.png') }}" alt="Logo do sistema Saas">
                         </a>
                         <p>Diagnóstico, plano de ação e campanhas para engajar sua equipe.</p>
                     </div>

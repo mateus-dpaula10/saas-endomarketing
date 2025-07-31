@@ -19,7 +19,7 @@ header a {
   color: white !important;
 }
 header a img {
-  width: 4vw;
+  width: 6vw;
   min-width: 4rem;
 }
 header ul li a:hover {
@@ -98,10 +98,10 @@ main #problemas #bloco-img-problemas::after {
   content: "";
   background-color: #F39C12;
   position: absolute;
-  top: 1.5rem;
-  right: -1.5rem;
-  bottom: -1.5rem;
-  left: 1.5rem;
+  top: 0.75rem;
+  right: -0.75rem;
+  bottom: -0.75rem;
+  left: 0.75rem;
   border-radius: 1rem;
   z-index: -1;
 }

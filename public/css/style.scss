@@ -27,7 +27,7 @@ header {
         color: #FFFF !important;
 
         img {
-            width: 4vw;
+            width: 6vw;
             min-width: 4rem;
         }
     }
@@ -149,10 +149,10 @@ main {
                 content: '';
                 background-color: $realce;
                 position: absolute;
-                top: 1.5rem;
-                right: -1.5rem;
-                bottom: -1.5rem;
-                left: 1.5rem;
+                top: .75rem;
+                right: -.75rem;
+                bottom: -.75rem;
+                left: .75rem;
                 border-radius: 1rem;
                 z-index: -1;
 

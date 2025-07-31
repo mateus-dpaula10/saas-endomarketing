@@ -19,7 +19,7 @@
     </div>
 
     <div id="problemas">
-        <div class="container-fluid">
+        <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-6" data-aos="fade-right" data-aos-duration="1000">
                     <h5>O Problema que Resolvemos</h5>
@@ -55,7 +55,7 @@
     </div>
 
     <div id="como-funciona">
-        <div class="container-fluid">
+        <div class="container">
             <div class="row">
                 <div class="col-12">
                     <h5>Como Funciona?</h5>
@@ -101,7 +101,7 @@
     </div>
 
     <div id="resultados">
-        <div class="container-fluid">
+        <div class="container">
             <div class="row">
                 <div class="col-12">
                     <h5>Resultados que Você Vai Alcançar</h5>
@@ -175,7 +175,7 @@
     </div>
 
     <div id="planos">
-        <div class="container-fluid">
+        <div class="container">
             <div class="row">
                 <div class="col-12">
                     <h5>Planos e Preços</h5>
