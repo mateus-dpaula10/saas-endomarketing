@@ -179,6 +179,9 @@
         const original = document.getElementById('relatorioCompleto');
         const clone = original.cloneNode(true);
 
+        const botaoExportarClone = clone.querySelector('.exportar-relatorio');
+        if (botaoExportarClone) botaoExportarClone.remove();
+
         if (plainId === 2) {
             const grafico = clone.querySelector('#graficoEvolucao');
             if (grafico) grafico.remove();

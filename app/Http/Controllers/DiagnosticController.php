@@ -552,10 +552,10 @@ class DiagnosticController extends Controller
     
                 if ($campanhaPadrao) {
                     $startDate = now();
-    
+
                     for ($i = 0; $i < $config['count']; $i++) {
                         $endDate = $startDate->copy()->addDays($config['duration']);
-    
+
                         Campaign::create([
                             'tenant_id'            => $user->tenant_id,
                             'standard_campaign_id' => $campanhaPadrao->id,
@@ -567,7 +567,7 @@ class DiagnosticController extends Controller
                             'is_auto'              => true,
                             'is_manual'            => false
                         ]);
-    
+
                         $startDate = $endDate->copy()->addDay();
                     }
                 }
