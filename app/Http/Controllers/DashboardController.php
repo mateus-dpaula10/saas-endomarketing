@@ -99,13 +99,16 @@ class DashboardController extends Controller
             ]);
         }
 
-        if ($plano === 1) {
-            return view('dashboard.index', [
-                'campanhas' => $campanhas,
-                'plano'     => $plano,
-                'user'      => $user
-            ]);
-        }
+        // if (in_array($plano, [1, 2, 3])) {
+        //     return view('dashboard.index', [
+        //         'user'                   => $user,
+        //         'evolucaoCategorias'     => $evolucaoCategorias ?: null,
+        //         'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
+        //         'diagnostics'            => $diagnosticData->where('isAvailable', false),
+        //         'campanhas'              => $campanhas,
+        //         'plano'                  => $plano
+        //     ]);
+        // }
 
         $respostas = Answer::with(['question', 'period'])
             ->where('tenant_id', $tenantId)

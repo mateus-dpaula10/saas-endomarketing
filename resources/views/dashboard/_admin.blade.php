@@ -2,7 +2,7 @@
     <h5>Relatório Completo dos Diagnósticos</h5>
     <p><strong>Empresa:</strong> {{ Auth::user()->tenant->nome ?? '---' }}</p>
 
-    @if(in_array($plano, [2,3]))
+    @if($plano === 3)
         <canvas id="graficoEvolucao" width="1000" height="400" style="max-width: 100%; height: auto;"></canvas>
     @endif
 
