@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Home;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class HomeController extends Controller
 {
@@ -28,7 +29,22 @@ class HomeController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'home_email_duvida' => 'required|email'
+        ]);
+
+        $email = 'dev@hiatocomunica.com.br';
+
+        try {
+            Mail::raw("Novo contato recebido: {$request->home_email_duvida}", function ($message) use ($email) {
+                $message->to($email)
+                        ->subject('Novo contato do site');
+            });
+            return back()->with('success', 'E-mail enviado com sucesso!');
+        } catch (\Exception $e) {
+            return back()->withErrors(['email' => 'Erro ao enviar e-mail: ' . $e->getMessage()]);
+        }
+
     }
 
     /**

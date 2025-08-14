@@ -20,7 +20,16 @@ header a {
 }
 header a img {
   width: 6vw;
-  min-width: 4rem;
+  min-width: 6rem;
+}
+header .navbar-toggler {
+  border: 0;
+}
+header .navbar-toggler:focus {
+  box-shadow: none;
+}
+header .navbar-toggler-icon {
+  background-image: url("./../img/home/toggle_button.png");
 }
 header ul li a:hover {
   font-weight: 600;
@@ -28,7 +37,6 @@ header ul li a:hover {
 }
 header ul li:last-child {
   background-color: #27AE60;
-  border-radius: 10rem;
   padding: 0.1rem 0.75rem;
 }
 header ul li:last-child:hover {
@@ -36,6 +44,11 @@ header ul li:last-child:hover {
 }
 header ul li:last-child:hover a {
   color: #FFF !important;
+}
+@media (min-width: 992px) {
+  header ul li:last-child {
+    border-radius: 10rem;
+  }
 }
 @media (min-width: 992px) {
   header ul {
@@ -288,13 +301,12 @@ footer {
 }
 footer #conteudo-footer {
   display: flex;
-  align-items: center;
   gap: 1rem;
 }
 footer #conteudo-footer img {
   width: 8vw;
-  min-width: 5rem;
-  margin-bottom: 2rem;
+  min-width: 8rem;
+  margin-bottom: 1rem;
   display: block;
 }
 footer #conteudo-footer > div {
@@ -307,26 +319,27 @@ footer #conteudo-footer > div ul {
 footer #conteudo-footer > div ul li a {
   color: #FFF;
 }
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
   footer #conteudo-footer {
     flex-wrap: wrap;
   }
-  footer #conteudo-footer img {
-    margin-inline: auto;
-  }
-  footer #conteudo-footer > div {
+  footer #conteudo-footer > div:first-of-type, footer #conteudo-footer > div:last-of-type {
     flex-basis: 100%;
-    flex-grow: initial;
   }
-  footer #conteudo-footer > div:first-of-type p {
-    text-align: center;
-  }
-  footer #conteudo-footer > div:not(:first-of-type) {
-    flex-basis: calc(33.33% - 0.67rem);
+  footer #conteudo-footer > div:nth-of-type(2), footer #conteudo-footer > div:nth-of-type(3) {
+    margin-bottom: 1rem;
   }
 }
-@media (max-width: 600px) {
-  footer #conteudo-footer > div:not(:first-of-type) {
-    flex-basis: calc(50% - 0.5rem);
-  }
+footer #conteudo-footer button[type=submit] {
+  background-color: #2C3E50;
+  color: #FFF;
+  border-color: #FFF;
+  transition: all 0.35s ease-in-out;
+  font-size: 1rem;
+  border-radius: 0.375rem;
+}
+footer #conteudo-footer button[type=submit]:hover {
+  background-color: #FFF;
+  color: #2C3E50;
+  border-color: #2C3E50;
 }/*# sourceMappingURL=style.css.map */

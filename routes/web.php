@@ -19,6 +19,7 @@ Route::post('/password-reset', [AuthController::class, 'passwordReset'])->name('
 Route::get('/admin/password-reset/{user}', [AuthController::class, 'showResetForm'])->name('admin.reset.password.form');
 Route::post('/admin/password-reset/{user}', [AuthController::class, 'resetPassword'])->name('admin.reset.password');
 Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
+Route::post('/send-email', [HomeController::class, 'store'])->name('home.send.email');
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);  

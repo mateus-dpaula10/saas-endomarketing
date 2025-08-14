@@ -30,9 +30,6 @@
                 <div class="collapse navbar-collapse" id="navbarSupportedContent">
                     <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
                         <li class="nav-item">
-                            <a class="nav-link active" aria-current="page" href="{{ route('index') }}">Home</a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link" href="/#problemas">Problemas</a>
                         </li>
                         <li class="nav-item">
@@ -70,6 +67,7 @@
                     <div>
                         <h5>Sistema</h5>
                         <ul>
+                            <li><a href="#problemas">Problemas</a></li>
                             <li><a href="#como-funciona">Como funciona</a></li>
                             <li><a href="#resultados">Resultados</a></li>
                             <li><a href="#planos">Planos</a></li>
@@ -78,21 +76,34 @@
                     <div>
                         <h5>Empresa</h5>
                         <ul>
-                            <li><a href="https://hiatoconteudodigital.com.br/#porquehiato">Sobre</a></li>
-                            <li><a href="https://hiatoconteudodigital.com.br/vem-pra-ca/#vempraca">Contato</a></li>
+                            <li><a target="_blank" href="https://dev.hiatocomunica.com.br/hiato/#porqueahiato">Sobre</a></li>
+                            <li><a target="_blank" href="https://dev.hiatocomunica.com.br/hiato/vem-pra-ca">Contato</a></li>
                         </ul>
                     </div>
                     <div>
-                        <h5>Legal</h5>
-                        <ul>
-                            <li><a href="#">Termos de uso</a></li>
-                            <li><a href="#">Política de privacidade</a></li>
-                        </ul>
+                        <h6>Ficou com alguma dúvida? Entre em contato preenchendo seu e-mail abaixo:</h6>
+                        <form action="{{ route('home.send.email') }}" method="POST" class="d-flex gap-1">
+                            @csrf
+                            <input required class="form-control" type="email" name="home_email_duvida" id="home_email_duvida" placeholder="Digite seu e-mail">
+                            <button class="btn btn-primary btn-sm" type="submit">Enviar</button>
+                        </form>
+                        @if(session('success'))
+                            <p class="mb-0 mt-1">{{ session('success') }}</p>
+                        @endif
+                        @if($errors->any())
+                            <ul class="mb-0 mt-1">
+                                @foreach($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </div>
                 </div>
 
                 <div class="col-12 mt-5">
-                    <p class="text-center mb-0">Copyright &copy; <?php echo date('Y')?> - Todos os direitos reservados</p>
+                    <p class="text-center mb-0">Copyright &copy; <?php echo date('Y')?> - Desenvolvido por 
+                        <a class="text-white" target="_blank" href="https://dev.hiatocomunica.com.br/hiato">Hiato Comunicação</a>
+                    </p>
                 </div>
             </div>
         </div>

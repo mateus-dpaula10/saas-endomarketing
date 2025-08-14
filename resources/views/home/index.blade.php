@@ -194,9 +194,8 @@
                                         <p class="plan-type">👥 Pequenas equipes</p>
                                         <small class="subtitle">Inclui:</small>
                                         <ul class="benefits">
-                                            <li>✅ 1 diagnóstico</li>
-                                            <li>👤 Até 20 colaboradores</li>
-                                            <li>📢 5 campanhas por mês</li>
+                                            <li>✅ 1 diagnóstico por mês</li>
+                                            <li>👤 Até 10 usuários</li>
                                         </ul>
                                     </div>
                                     <button class="btn btn-primary">Valor Sob Consulta</button>
@@ -215,9 +214,10 @@
                                         <p class="plan-type">🏢 Empresas médias</p>
                                         <small class="subtitle">Inclui:</small>
                                         <ul class="benefits">
-                                            <li>✅ Diagnóstico completo</li>
-                                            <li>👥 Até 100 colaboradores</li>
-                                            <li>📢 20 campanhas por mês</li>
+                                            <li>✅ 2 diagnósticos por mês</li>
+                                            <li>👥 Até 20 usuários</li>
+                                            <li>📢 2 campanhas por mês</li>
+                                            <li>📊 Exportação de dados</li>
                                         </ul>
                                     </div>
                                     <button class="btn btn-primary">Valor Sob Consulta</button>
@@ -235,10 +235,10 @@
                                         <p class="plan-type">🏦 Grandes organizações</p>
                                         <small class="subtitle">Inclui:</small>
                                         <ul class="benefits">
-                                            <li>♾️ Diagnósticos ilimitados</li>
-                                            <li>👥 +100 usuários</li>
-                                            <li>📅 Calendário customizado</li>
-                                            <li>🤝 Suporte dedicado</li>
+                                            <li>✅ 3 diagnósticos por mês</li>
+                                            <li>👥 Até 50 usuários</li>
+                                            <li>📢 3 campanhas por mês</li>
+                                            <li>📊 Exportação de dados e gráficos comparativos</li>
                                         </ul>
                                     </div>
                                     <button class="btn btn-primary">Valor Sob Consulta</button>
