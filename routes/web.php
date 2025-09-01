@@ -33,12 +33,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['auth', 'role:superadmin'])->group(function () {
         Route::resource('/empresa', TenantController::class);    
-        Route::get('/diagnostico/create', [DiagnosticController::class, 'create'])->name('diagnostico.create');
-        Route::post('/diagnostico', [DiagnosticController::class, 'store'])->name('diagnostico.store');
         Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
         Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
-        Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy');
-        Route::post('/diagnostico/{id}/reabrir', [DiagnosticController::class, 'reabrir'])->name('diagnostico.reabrir');    
+        Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy'); 
         Route::get('/diagnostico/empresas-por-plano/{plainId}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
         Route::get('/diagnostico/periodos-por-plano/{plainId}', [DiagnosticController::class, 'getPeriodsByPlain'])->name('diagnostico.empresas.periodos.plano');    
         Route::get('/diagnostico/perguntas-por-plano/{plainId}/{diagnosticId}', [DiagnosticController::class, 'getPerguntasPorPlano'])->name('diagnostico.empresas.perguntas.plano');  

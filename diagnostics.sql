@@ -1,6 +1,6 @@
 -- --------------------------------------------------------
 -- Servidor:                     127.0.0.1
--- Versão do servidor:           10.4.32-MariaDB - mariadb.org binary distribution
+-- Versão do servidor:           8.4.3 - MySQL Community Server - GPL
 -- OS do Servidor:               Win64
 -- HeidiSQL Versão:              12.11.0.7065
 -- --------------------------------------------------------
@@ -14,24 +14,25 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
--- Copiando estrutura para tabela saas-endomarketing.diagnostics
+-- Copiando estrutura para tabela saas_endomarketing.diagnostics
 CREATE TABLE IF NOT EXISTS `diagnostics` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `title` varchar(255) NOT NULL,
-  `description` text DEFAULT NULL,
-  `plain_id` bigint(20) unsigned DEFAULT NULL,
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `plain_id` bigint unsigned DEFAULT NULL,
+  `type` enum('cultura','comunicacao','comunicacao_campanhas') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'cultura',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `diagnostics_plain_id_foreign` (`plain_id`),
   CONSTRAINT `diagnostics_plain_id_foreign` FOREIGN KEY (`plain_id`) REFERENCES `plains` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela saas-endomarketing.diagnostics: ~3 rows (aproximadamente)
-INSERT IGNORE INTO `diagnostics` (`id`, `title`, `description`, `plain_id`, `created_at`, `updated_at`) VALUES
-	(1, 'Diagnóstico Básico', 'Versão básica com perguntas essenciais.', 1, '2025-07-21 20:00:33', '2025-07-22 12:34:50'),
-	(2, 'Diagnóstico Intermediário', 'Versão intermediária com mais profundidade.', 2, '2025-07-21 20:00:33', '2025-07-21 20:00:33'),
-	(3, 'Diagnóstico Avançado', 'Versão completa com todas as categorias.', 3, '2025-07-21 20:00:33', '2025-07-21 20:00:33');
+-- Copiando dados para a tabela saas_endomarketing.diagnostics: ~3 rows (aproximadamente)
+INSERT IGNORE INTO `diagnostics` (`id`, `title`, `description`, `plain_id`, `type`, `created_at`, `updated_at`) VALUES
+	(1, 'Diagnóstico de Cultura', 'Avaliação da cultura organizacional', 1, 'cultura', '2025-09-01 17:59:35', '2025-09-01 17:59:35'),
+	(2, 'Diagnóstico de Comunicação Interna', 'Avaliação da comunicação interna', 2, 'comunicacao', '2025-09-01 17:59:35', '2025-09-01 17:59:35'),
+	(3, 'Diagnóstico de Comunicação Interna com Campanhas', 'Avaliação da comunicação + campanhas automáticas', 3, 'comunicacao_campanhas', '2025-09-01 17:59:35', '2025-09-01 17:59:35');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

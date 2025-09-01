@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->text('text');
             $table->string('category')->nullable();
+            $table->enum('type', ['aberta', 'fechada'])->default('aberta');
+            $table->string('diagnostic_type')->default('cultura');
             $table->timestamps();
         });
     }

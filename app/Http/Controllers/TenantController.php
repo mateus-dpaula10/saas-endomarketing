@@ -35,60 +35,43 @@ class TenantController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'nome'                 => 'required|string|max:255|unique:tenants,nome',
-            'plain_id'             => 'required|exists:plains,id',
-            'cnpj'                 => 'required|string|size:14',
-            'social_reason'        => 'nullable|string|max:255',
-            'fantasy_name'         => 'nullable|string|max:255',
-            'address'              => 'nullable|string|max:255',
-            'bairro'               => 'nullable|string|max:255',
-            'cep'                  => 'nullable|string|max:10',
-            'telephone'            => 'nullable|string|max:20',
-            'contract_start'       => 'required|date',
-            'active_tenant'        => 'required|boolean'
+            'nome'                    => 'required|string|max:255|unique:tenants,nome',
+            'plain_id'                => 'required|exists:plains,id',
+            'cnpj'                    => 'required|string|size:14',
+            'social_reason'           => 'nullable|string|max:255',
+            'fantasy_name'            => 'nullable|string|max:255',
+            'address'                 => 'nullable|string|max:255',
+            'bairro'                  => 'nullable|string|max:255',
+            'cep'                     => 'nullable|string|max:10',
+            'telephone'               => 'nullable|string|max:20',
+            'contract_start'          => 'required|date',
+            'active_tenant'           => 'required|boolean'
+        ], [
+            'nome.required'           => 'O campo nome é obrigatório.',
+            'nome.unique'             => 'Já existe uma empresa cadastrada com esse nome.',            
+            'plain_id.required'       => 'É obrigatório selecionar um plano.',
+            'plain_id.exists'         => 'O plano selecionado não é válido.',
+            'cnpj.required'           => 'O campo CNPJ é obrigatório.',
+            'cnpj.size'               => 'O CNPJ deve ter exatamente 14 caracteres numéricos.',
+            'social_reason.max'       => 'A razão social deve ter no máximo 255 caracteres.',
+            'fantasy_name.max'        => 'O nome fantasia deve ter no máximo 255 caracteres.',
+            'address.max'             => 'O endereço deve ter no máximo 255 caracteres.',
+            'bairro.max'              => 'O bairro deve ter no máximo 255 caracteres.',
+            'cep.max'                 => 'O cEP deve ter no máximo 10 caracteres.',
+            'telephone.max'           => 'O telefone deve ter no máximo 20 caracteres.',
+            'contract_start.required' => 'A data de início do contrato é obrigatória.',
+            'contract_start.date'     => 'A data de início do contrato deve ser válida.',
+            'active_tenant.required'  => 'É obrigatório informar se a empresa está ativa.',
+            'active_tenant.boolean'   => 'O campo ativo deve ser verdadeiro ou falso.'
         ]); 
 
         $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
 
         $tenant = Tenant::create($validated);
 
-        $diagnostics = Plain::find($validated['plain_id'])?->diagnostics;
-
-        if ($diagnostics && $diagnostics->isNotEmpty()) {
-            $tenant->diagnostics()->syncWithoutDetaching($diagnostics->pluck('id'));
-
-            $characteristics = $tenant->plain->characteristics;
-
-            $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 0;
-
-            $periodCount = match ($diagnosticsPerMonth) {
-                1       => 1,
-                2       => 2,
-                3       => 3,
-                default => 1
-            };
-
-            $duration = match ($diagnosticsPerMonth) {
-                1       => 30,
-                2       => 15,
-                3       => 10,
-                default => 30
-            };
-
-            $start = now()->startOfDay();
-
-            foreach ($diagnostics as $diagnostic) {
-                for ($i = 0; $i < $periodCount; $i++) {
-                    $periodStart = (clone $start)->addDays($duration * $i);
-                    $periodEnd   = (clone $periodStart)->addDays($duration - 1);
-
-                    $diagnostic->periods()->create([
-                        'tenant_id' => $tenant->id,
-                        'start'     => $periodStart,
-                        'end'       => $periodEnd
-                    ]);
-                }
-            }
+        $plan = Plain::with('diagnostics')->find($validated['plain_id']);
+        if ($plan && $plan->diagnostics->isNotEmpty()) {
+            $tenant->diagnostics()->syncWithoutDetaching($plan->diagnostics->pluck('id'));
         }
 
         return redirect()->route('empresa.index')->with('success', 'Empresa criada com sucesso!');
@@ -121,35 +104,50 @@ class TenantController extends Controller
             $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
         });
 
-        $characteristics = Plain::find($plainId)?->characteristics ?? [];
-        $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 1;
-
-        $periodCount = match ($diagnosticsPerMonth) {
-            1       => 1,
-            2       => 2,
-            3       => 3,
-            default => 1
-        };
-
-        $duration = match ($diagnosticsPerMonth) {
-            1       => 30,
-            2       => 15,
-            3       => 10,
-            default => 30
-        };
+        $plan = Plain::with('diagnostics')->find($plainId);
+        if (!$plan || $plan->diagnostics->isEmpty()) {
+            return;
+        }
 
         $start = now()->startOfDay();
 
-        foreach ($empresa->diagnostics as $diagnostic) {
-            for ($i = 0; $i < $periodCount; $i++) {
-                $periodStart = (clone $start)->addDays($duration * $i);
-                $periodEnd   = (clone $periodStart)->addDays($duration - 1);
-
+        foreach ($plan->diagnostics as $diagnostic) {
+            if ($plan->isAvulso()) {
                 $diagnostic->periods()->create([
                     'tenant_id' => $empresa->id,
-                    'start'     => $periodStart,
-                    'end'       => $periodEnd,
+                    'start'     => $start,
+                    'end'       => $start->copy()->addDays(29)->endOfDay()
                 ]);
+            }
+            
+            if ($plan->isMensal()) {
+                $characteristics = $plan->characteristics ?? [];
+                $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 1;
+
+                $periodCount = match ($diagnosticsPerMonth) {
+                    1       => 1,
+                    2       => 2,
+                    3       => 3,
+                    default => 1
+                };
+
+                $duration = match ($diagnosticsPerMonth) {
+                    1       => 30,
+                    2       => 15,
+                    3       => 10,
+                    default => 30
+                };
+
+                for ($i = 0; $i < $periodCount; $i++) {
+                    $periodStart = (clone $start)->addDays($duration * $i);
+                    $periodEnd   = (clone $periodStart)->addDays($duration - 1);
+
+                    $diagnostic->periods()->create([
+                        'tenant_id' => $empresa->id,
+                        'start'     => $periodStart,
+                        'end'       => $periodEnd,
+                    ]);
+                }
             }
         }
     }
@@ -162,17 +160,34 @@ class TenantController extends Controller
         $empresa = Tenant::findOrFail($id);
 
         $validated = $request->validate([
-            'nome'                 => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
-            'plain_id'             => 'required|exists:plains,id',
-            'cnpj'                 => 'required|string|size:14',
-            'social_reason'        => 'nullable|string|max:255',
-            'fantasy_name'         => 'nullable|string|max:255',
-            'address'              => 'nullable|string|max:255',
-            'bairro'               => 'nullable|string|max:255',
-            'cep'                  => 'nullable|string|max:10',
-            'telephone'            => 'nullable|string|max:20',
-            'contract_start'       => 'required|date',
-            'active_tenant'        => 'required|boolean'
+            'nome'                    => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
+            'plain_id'                => 'required|exists:plains,id',
+            'cnpj'                    => 'required|string|size:14',
+            'social_reason'           => 'nullable|string|max:255',
+            'fantasy_name'            => 'nullable|string|max:255',
+            'address'                 => 'nullable|string|max:255',
+            'bairro'                  => 'nullable|string|max:255',
+            'cep'                     => 'nullable|string|max:10',
+            'telephone'               => 'nullable|string|max:20',
+            'contract_start'          => 'required|date',
+            'active_tenant'           => 'required|boolean'
+        ], [
+            'nome.required'           => 'O campo nome é obrigatório.',
+            'nome.unique'             => 'Já existe uma empresa cadastrada com esse nome.',            
+            'plain_id.required'       => 'É obrigatório selecionar um plano.',
+            'plain_id.exists'         => 'O plano selecionado não é válido.',
+            'cnpj.required'           => 'O campo CNPJ é obrigatório.',
+            'cnpj.size'               => 'O CNPJ deve ter exatamente 14 caracteres numéricos.',
+            'social_reason.max'       => 'A razão social deve ter no máximo 255 caracteres.',
+            'fantasy_name.max'        => 'O nome fantasia deve ter no máximo 255 caracteres.',
+            'address.max'             => 'O endereço deve ter no máximo 255 caracteres.',
+            'bairro.max'              => 'O bairro deve ter no máximo 255 caracteres.',
+            'cep.max'                 => 'O cEP deve ter no máximo 10 caracteres.',
+            'telephone.max'           => 'O telefone deve ter no máximo 20 caracteres.',
+            'contract_start.required' => 'A data de início do contrato é obrigatória.',
+            'contract_start.date'     => 'A data de início do contrato deve ser válida.',
+            'active_tenant.required'  => 'É obrigatório informar se a empresa está ativa.',
+            'active_tenant.boolean'   => 'O campo ativo deve ser verdadeiro ou falso.'
         ]);
 
         $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
@@ -181,6 +196,8 @@ class TenantController extends Controller
         
         $oldPlainId = $empresa->plain_id;
         $newPlainId = $validated['plain_id'];        
+
+        $empresa->update($validated);
 
         if ($oldPlainId != $newPlainId) {       
             $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
@@ -193,18 +210,16 @@ class TenantController extends Controller
                     ->where('tenant_id', $empresa->id)
                     ->update(['diagnostic_id' => $novoDiagnostico->id]);
             }
+        } else {
+            if ($validated['active_tenant']) {
+                $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
+            }
         }
 
         if (!$validated['active_tenant']) {
             $empresa->diagnostics->each(function ($diagnostic) use ($empresa) {
                 $diagnostic->periods()->where('tenant_id', $empresa->id)->delete();
             });
-        }
-
-        $empresa->update($validated);
-
-        if ($oldPlainId == $newPlainId && $validated['active_tenant']) {
-            $this->criarPeriodosParaEmpresa($empresa, $newPlainId);
         }
 
         return redirect()->route('empresa.index')->with('success', 'Empresa atualizada com sucesso!');

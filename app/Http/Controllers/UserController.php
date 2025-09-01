@@ -36,9 +36,10 @@ class UserController extends Controller
      */
     public function create()
     {
-        $data = Tenant::all();
+        $empresas = Tenant::all();
+        $authUser = auth()->user();
 
-        return view ('users.create', ['empresas' => $data]);
+        return view ('users.create', compact('empresas', 'authUser'));
     }
 
     /**
@@ -46,7 +47,7 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $authUser = Auth::user();
+        $authUser = auth()->user();
 
         $request->validate([
             'name'      => 'required|string|max:255',
@@ -80,15 +81,6 @@ class UserController extends Controller
         } else {            
             $tenantId = $authUser->tenant_id;
             $role = 'user';
-        }
-
-        $characteristics = Tenant::find($tenantId)->plain->characteristics;
-        $maxUsersPerPlain = $characteristics['users_limit'] ?? 0;
-
-        $currentUserCount = User::where('tenant_id', $tenantId)->count();
-        
-        if ($currentUserCount >= $maxUsersPerPlain) {
-            return redirect()->back()->withErrors(['limit' => 'Capacidade máxima de usuários do plano foi atingida.']);
         }
 
         User::create([
@@ -141,11 +133,21 @@ class UserController extends Controller
                 'regex:/[a-z]/', 
                 'regex:/[0-9]/', 
                 'regex:/[@$!%*?&]/'
-            ]
+            ],
+            'tenant_id' => $authUser->role === 'superadmin' ? 'required|exists:tenants,id' : '',
+            'role'      => $authUser->role === 'superadmin' ? 'required|in:admin,user,superadmin' : ''
         ], [
-            'password.regex' => 'A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.',
-            'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
-            'password.confirmed' => 'As senhas não coincidem.',
+            'name.required'           => 'O campo nome é obrigatório.',
+            'email.required'          => 'O campo e-mail é obrigatório.',
+            'email.email'             => 'Informe um e-mail válido.',
+            'email.unique'            => 'Já existe um usuário com este e-mail.',
+            'password.regex'          => 'A senha deve conter pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.',
+            'password.min'            => 'A senha deve ter pelo menos 8 caracteres.',
+            'password.confirmed'      => 'As senhas não coincidem.',
+            'tenant_id.required'      => 'É obrigatório selecionar uma empresa.',
+            'tenant_id.exists'        => 'A empresa selecionada não é válida.',
+            'role.required'           => 'É obrigatório selecionar uma função.',
+            'role.in'                 => 'O valor selecionado para função não é válido.'
         ]);
 
         $data = [
@@ -158,11 +160,6 @@ class UserController extends Controller
         }
 
         if ($authUser->role === 'superadmin') {
-            $request->validate([
-                'tenant_id' => 'required|exists:tenants,id',
-                'role'      => 'required|in:admin,user,superadmin'
-            ]);
-
             $data['tenant_id'] = $request->tenant_id;
             $data['role'] = $request->role;
         } else {

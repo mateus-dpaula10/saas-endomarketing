@@ -1,6 +1,6 @@
 -- --------------------------------------------------------
 -- Servidor:                     127.0.0.1
--- Versão do servidor:           10.4.32-MariaDB - mariadb.org binary distribution
+-- Versão do servidor:           8.4.3 - MySQL Community Server - GPL
 -- OS do Servidor:               Win64
 -- HeidiSQL Versão:              12.11.0.7065
 -- --------------------------------------------------------
@@ -14,22 +14,24 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
--- Copiando estrutura para tabela saas-endomarketing.plains
+-- Copiando estrutura para tabela saas_endomarketing.plains
 CREATE TABLE IF NOT EXISTS `plains` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT NULL,
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `type` enum('avulso','mensal') COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(8,2) DEFAULT NULL,
-  `characteristics` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`characteristics`)),
+  `includes_campaigns` tinyint(1) NOT NULL DEFAULT '0',
+  `characteristics` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Copiando dados para a tabela saas-endomarketing.plains: ~3 rows (aproximadamente)
-INSERT IGNORE INTO `plains` (`id`, `name`, `price`, `characteristics`, `created_at`, `updated_at`) VALUES
-	(1, 'Básico', 49.90, '{\r\n    "users_limit": 10,\r\n    "campaigns_enabled": false,\r\n    "diagnostics_per_month": 1,\r\n    "data_export": "none"\r\n  }', '2025-07-28 16:01:18', '2025-07-28 16:01:18'),
-	(2, 'Intermediário', 99.90, '{\r\n    "users_limit": 20,\r\n    "campaigns_enabled": true,\r\n    "diagnostics_per_month": 2,\r\n    "data_export": "data"\r\n  }', '2025-07-28 16:01:18', '2025-07-28 16:01:18'),
-	(3, 'Avançado', 199.90, '{\r\n    "users_limit": 50,\r\n    "campaigns_enabled": true,\r\n    "diagnostics_per_month": 3,\r\n    "data_export": "comparative_graph_and_data"\r\n  }', '2025-07-28 16:01:18', '2025-07-28 16:01:18');
+-- Copiando dados para a tabela saas_endomarketing.plains: ~3 rows (aproximadamente)
+INSERT IGNORE INTO `plains` (`id`, `name`, `type`, `price`, `includes_campaigns`, `characteristics`, `created_at`, `updated_at`) VALUES
+	(1, 'Diagnóstico de Cultura', 'avulso', 49.90, 0, '["Diagnóstico único", "Relatório PDF"]', '2025-09-01 12:58:46', '2025-09-01 12:58:46'),
+	(2, 'Diagnóstico de Comunicação Interna', 'avulso', 99.90, 0, '["Diagnóstico único", "Relatório detalhado"]', '2025-09-01 12:58:46', '2025-09-01 12:58:46'),
+	(3, 'Comunicação Interna + Campanhas Mensais', 'mensal', 199.90, 1, '["Diagnóstico inicial", "Campanhas mensais automáticas", "Dashboard de resultados"]', '2025-09-01 12:58:46', '2025-09-01 12:58:46');
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Diagnostic extends Model
 {
     use HasFactory;
-    protected $fillable = ['title', 'description', 'plain_id'];
 
-    protected $casts = ['pivot.target' => 'array'];
+    protected $fillable = ['title', 'description', 'plain_id', 'type'];
 
     public function questions() {
         return $this->belongsToMany(Question::class, 'diagnostic_question')
+            ->using(DiagnosticQuestion::class)
             ->withPivot('target')
             ->withTimestamps();
     }
@@ -23,11 +23,7 @@ class Diagnostic extends Model
     }
 
     public function tenants() {
-        return $this->belongsToMany(Tenant::class);
-    }
-
-    public function periods() {
-        return $this->hasMany(DiagnosticPeriod::class);
+        return $this->belongsToMany(Tenant::class, 'diagnostic_tenant');
     }
 
     public function campaigns() {

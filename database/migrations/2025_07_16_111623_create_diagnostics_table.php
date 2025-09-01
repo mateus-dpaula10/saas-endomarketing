@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->foreignId('plain_id')->nullable()->constrained('plains')->onDelete('set null');
+            $table->enum('type', ['cultura', 'comunicacao', 'comunicacao_campanhas'])->default('cultura');
             $table->timestamps();            
         });
     }

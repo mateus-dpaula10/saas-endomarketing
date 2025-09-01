@@ -1,66 +1,78 @@
 @php
-    $user = auth()->user();
-
-    $diagnostic = is_array($data['diagnostic']) && isset($data['diagnostic']['diagnostic']) ? $data['diagnostic']['diagnostic'] : $data['diagnostic'];
-    $period = $data['period'];
-    $hasQuestions = $data['hasQuestions'];
-    $hasAnswered = $data['hasAnswered'];
-    $hasAnsweredAnyPeriod = $data['hasAnsweredAnyPeriod'];
+    $diagnostic = $data['diagnostic'] ?? $data;
+    $hasQuestions = $data['hasQuestions'] ?? $diagnostic->questions->isNotEmpty();
+    $hasAnswered = $data['hasAnswered'] ?? false;
 @endphp
 
 <tr>
     <td>{{ $diagnostic->title }}</td>
     <td>{{ $diagnostic->description }}</td>
-    <td>
-        @if ($user->role === 'superadmin')
-            @php
-                $periodsByTenant = $diagnostic->periods->groupBy('tenant_id');
-            @endphp
-
-            @forelse ($periodsByTenant as $tenantId => $periods)
-                @php 
-                    $active = $periods->first(function ($p) {
-                        return now()->between($p->start, $p->end);
-                    });                    
-                @endphp
-                
-                @if ($active)
-                    <div class="mb-2">
-                        <strong>{{ $active->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
-                        {{ \Carbon\Carbon::parse($active->start)->format('d/m/Y') }} 
-                        até 
-                        {{ \Carbon\Carbon::parse($active->end)->format('d/m/Y') }}
-                    </div>
-                @else
-                    <div class="mb-2 text-muted">
-                        <strong>{{ $periods->first()->tenant->nome ?? 'Empresa' }}:</strong> Nenhum período ativo no momento
-                    </div>
-                @endif
-            @empty
-                <div class="text-muted">Sem períodos cadastrados</div>
-            @endforelse
-        @else
-            @if ($period && now()->between($period->start, $period->end))
-                <div>
-                    <strong>{{ $period->tenant->nome ?? 'Empresa não definida' }}:</strong><br>
-                    {{ \Carbon\Carbon::parse($period->start)->format('d/m/Y') }} 
-                    até 
-                    {{ \Carbon\Carbon::parse($period->end)->format('d/m/Y') }}
-                </div>
-            @else 
-                <div class="text-muted">Sem período ativo para sua empresa</div>
-            @endif
-        @endif    
-    </td>
     <td>{{ $diagnostic->created_at->format('d/m/Y') }}</td>
-    <td>{{ $diagnostic->plain->name }}</td>
-    <td>
-        @include('diagnostic._diagnostic_actions', [
-            'diagnostic' => $diagnostic,
-            'period' => $period,
-            'hasQuestions' => $hasQuestions,
-            'hasAnswered' => $hasAnswered,
-            'hasAnsweredAnyPeriod' => $hasAnsweredAnyPeriod
-        ])
+    <td>{{ $diagnostic->plain->name ?? '-' }}</td>
+    <td>      
+        @if (in_array($authUser->role, ['admin', 'user']))
+            @if ($hasQuestions && !$hasAnswered)
+                <a href="{{ route('diagnostico.answer.form', $diagnostic->id) }}" class="btn btn-primary btn-sm">Responder</a>
+            @elseif ($hasAnswered)
+                @if ($authUser->role === 'admin')
+                    <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
+                        Visualizar respostas
+                    </button>
+                @else
+                    <span class="text-muted">Diagnóstico já respondido</span>
+                @endif
+            @else
+                <span class="text-muted">Sem perguntas disponíveis</span>
+            @endif
+        @elseif ($authUser->role === 'superadmin')
+            <button class="btn btn-primary btn-sm mb-1" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>
+            <a href="{{ route('diagnostico.edit', $diagnostic->id) }}" class="btn btn-warning btn-sm mb-1">Editar</a>
+            <form action="{{ route('diagnostico.destroy', $diagnostic->id) }}" method="POST" class="d-inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-danger btn-sm mb-1">Excluir</button>
+            </form>
+        @endif
     </td>
 </tr>
+
+<div class="modal fade" id="perguntasModal-{{ $diagnostic->id }}" tabindex="-1" aria-labelledby="perguntasModalLabel-{{ $diagnostic->id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Perguntas - {{ $diagnostic->title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                @foreach ($diagnostic->questions as $index => $question)
+                    @php
+                        $targetsArray = is_array($question->pivot->target) 
+                                        ? $question->pivot->target 
+                                        : json_decode($question->pivot->target ?? '[]', true);
+                        $targets = implode(', ', $targetsArray);
+                    @endphp
+
+                    <div class="mb-4">                                                
+                        <label>{{ $index + 1 }} - {{ $question->text }}</label>
+
+                        @if ($question->type === 'aberta')
+                            <textarea class="form-control" rows="1" disabled placeholder="Campo aberto"></textarea>
+                        @elseif($question->options && $question->options->isNotEmpty())
+                            @foreach ($question->options as $option)
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" disabled>
+                                    <label class="form-check-label">{{ $option->text }}</label>
+                                </div>
+                            @endforeach
+                        @else
+                            <p class="text-muted">Sem opções disponíveis</p>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>

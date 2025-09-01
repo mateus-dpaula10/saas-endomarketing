@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Tenant extends Model
 {
     use HasFactory;
+    
     protected $fillable = [
         'nome', 
         'plain_id',

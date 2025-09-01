@@ -29,10 +29,6 @@
                     </div>
                 @endif
 
-                @php
-                    $authUser = auth()->user()
-                @endphp
-
                 <form action="{{ route('usuario.store') }}" method="POST">
                     @csrf
 
@@ -63,7 +59,7 @@
                         </div>
                     </div>
 
-                    @if (auth()->user()->role === 'superadmin')
+                    @if ($authUser->role === 'superadmin')
                         <div class="form-group mt-3">
                             <label for="tenant_id" class="form-label">Empresa</label>
                             <select name="tenant_id" id="tenant_id" class="form-select" required>
@@ -78,8 +74,8 @@
                         <input type="hidden" name="role" value="admin">
 
                         <button type="submit" class="btn btn-primary mt-3">Cadastrar administrador</button>
-                    @elseif (auth()->user()->role === 'admin')
-                        <input type="hidden" name="tenant_id" value="{{ auth()->user()->tenant_id }}">
+                    @elseif ($authUser->role === 'admin')
+                        <input type="hidden" name="tenant_id" value="{{ $authUser->tenant_id }}">
                         <input type="hidden" name="role" value="user">
 
                         <button type="submit" class="btn btn-primary mt-3">Salvar</button>

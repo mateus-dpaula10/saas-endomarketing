@@ -56,70 +56,6 @@
                         </select>
                     </div>
 
-                    {{-- <div class="form-group mt-3">
-                        <label for="tenants" class="form-label">Empresas associadas</label>
-                        <select name="tenants[]" id="tenants" class="form-select" multiple>
-                            @foreach ($allTenants as $tenant)
-                                <option value="{{ $tenant->id }}" 
-                                    {{ in_array($tenant->id, old('tenants', $linkedTenants->pluck('id')->toArray())) ? 'selected' : '' }}>
-                                    {{ $tenant->nome }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="form-text text-muted">Segure Ctrl (Windows) ou Cmd (Mac) para selecionar múltiplas empresas.</small>
-                    </div>
-
-                    <div id="periods-container-fluid" class="mt-4">
-                        @foreach ($diagnostic->tenants as $tenant)
-                            @php
-                                $period = $periodsByTenant[$tenant->id] ?? null;
-                            @endphp
-                            <div class="period-block border rounded p-3 mb-3" data-tenant-id="{{ $tenant->id }}">
-                                <h6>{{ $tenant->nome }}</h6>
-
-                                <input type="hidden" name="tenant_ids[]" value="{{ $tenant->id }}">
-
-                                <div class="mb-2">
-                                    <label for="start-{{ $tenant->id }}" class="form-label">Início do período</label>
-                                    <input type="date" 
-                                        id="start-{{ $tenant->id }}" 
-                                        name="start[{{ $tenant->id }}]" 
-                                        class="form-control"
-                                        value="{{ old('start.' . $tenant->id, optional($period)->start ? \Carbon\Carbon::parse($period->start)->format('Y-m-d') : '') }}"
-                                        required>
-                                </div>
-
-                                <div>
-                                    <label for="end-{{ $tenant->id }}" class="form-label">Fim do período</label>
-                                    <input type="date" 
-                                        id="end-{{ $tenant->id }}" 
-                                        name="end[{{ $tenant->id }}]" 
-                                        class="form-control"
-                                        value="{{ old('end.' . $tenant->id, optional($period)->end ? \Carbon\Carbon::parse($period->end)->format('Y-m-d') : '') }}"
-                                        required>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                    
-                    <div id="period-template" style="display:none;">
-                        <div class="period-block border rounded p-3 mb-3" data-tenant-id="">
-                            <h6 class="tenant-name"></h6>
-
-                            <input type="hidden" class="tenant-id-input" value="">
-
-                            <div class="mb-2">
-                                <label class="form-label">Início do período</label>
-                                <input type="date" class="form-control start-input">
-                            </div>
-
-                            <div>
-                                <label class="form-label">Fim do período</label>
-                                <input type="date" class="form-control end-input">
-                            </div>
-                        </div>
-                    </div> --}}
-
                     <div class="form-group mt-4">
                         <label class="form-label'">Perguntas</label>
                         <div id="questions-wrapper">
@@ -133,17 +69,10 @@
 
                                     <label class="form-label">Categoria</label>
                                     <select name="questions_category[]" class="form-select mb-2" required>
-                                        @foreach ([
-                                            'comu_inte' => 'Comunicação Interna',
-                                            'reco_valo' => 'Reconhecimento e Valorização',
-                                            'clim_orga' => 'Clima Organizacional',
-                                            'cult_orga' => 'Cultura Organizacional',
-                                            'dese_capa' => 'Desenvolvimento e Capacitação',
-                                            'lide_gest' => 'Liderança e Gestão',
-                                            'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
-                                            'pert_enga' => 'Pertencimento e Engajamento'
-                                        ] as $value => $label)
-                                            <option value="{{ $value }}" {{ $question->category === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                        @foreach ($categorias as $value => $label)
+                                            <option value="{{ $value }}" {{ $question->category === $value ? 'selected' : '' }}>
+                                                {{ $label }}
+                                            </option>
                                         @endforeach
                                     </select>
 
@@ -184,10 +113,8 @@
 
 @push('scripts')
     <script>
-        // const tenantLastPeriods = @json($periodsByTenant);
-        // const savedPeriods = { ...tenantLastPeriods };
         let perguntasPorCategoria = @json($perguntasPorCategoria); 
-
+        let categorias = @json($categorias);
         let questionIndex = {{ count($diagnostic->questions ?? []) }};
 
         function addQuestion() {
@@ -196,19 +123,17 @@
             div.className = 'question-block mb-3 border rounded p-3 position-relative';
             div.setAttribute('data-index', questionIndex);
 
+            let categoriaOptions = Object.entries(categorias).map(([value, label]) => {
+                return `<option value="${value}">${label}</option>`;
+            }).join('');
+
             div.innerHTML = `
                 <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">Remover</button>
 
                 <label class="form-label">Categoria</label>
                 <select name="questions_category[${questionIndex}]" class="form-select mb-2" onchange="atualizarPerguntas(this, ${questionIndex})" required>
-                    <option value="comu_inte">Comunicação Interna</option>
-                    <option value="reco_valo">Reconhecimento e Valorização</option>
-                    <option value="clim_orga">Clima Organizacional</option>
-                    <option value="cult_orga">Cultura Organizacional</option>
-                    <option value="dese_capa">Desenvolvimento e Capacitação</option>
-                    <option value="lide_gest">Liderança e Gestão</option>
-                    <option value="qual_vida_trab">Qualidade de Vida no Trabalho</option>
-                    <option value="pert_enga">Pertencimento e Engajamento</option>
+                    <option value="">Selecione uma categoria</option>
+                    ${categoriaOptions}
                 </select>
 
                 <label class="form-label">Texto da pergunta</label>
@@ -257,6 +182,7 @@
                     const option = document.createElement('option');
                     option.value = pergunta.id;
                     option.textContent = pergunta.text;
+                    option.dataset.type = pergunta.type; 
                     questionSelect.appendChild(option);
                 }
             });
@@ -271,8 +197,13 @@
             if (select.value === '') {
                 input.classList.remove('d-none');
             } else {
-                input.classList.add('d-none');
-                input.value = '';
+                const selectedOption = select.selectedOptions[0];
+                if (selectedOption?.dataset.type === 'textarea') {
+                    input.classList.remove('d-none');
+                } else {
+                    input.classList.add('d-none');
+                    input.value = '';
+                }
             }
         }
 
@@ -292,7 +223,6 @@
                 })
                 .then(data => {
                     perguntasPorCategoria = data;
-                    console.log(perguntasPorCategoria);
 
                     document.querySelectorAll('#questions-wrapper .question-block').forEach(block => {
                         const index = block.getAttribute('data-index');
@@ -309,93 +239,5 @@
                     alert('Não foi possível carregar perguntas para o plano selecionado.');
                 });
         }
-
-        // document.addEventListener('DOMContentLoaded', () => {
-        //     const plainSelect = document.getElementById('plain_id');
-        //     const tenantsSelect = document.getElementById('tenants');
-        //     const periodscontainer-fluid = document.getElementById('periods-container-fluid');
-        //     const periodTemplate = document.getElementById('period-template').firstElementChild;
-
-        //     function atualizarPeriodos() {
-        //         const selectedTenantIds = Array.from(tenantsSelect.selectedOptions).map(opt => opt.value);
-
-        //         Array.from(periodscontainer-fluid.querySelectorAll('.period-block')).forEach(block => {
-        //             const tenantId = block.getAttribute('data-tenant-id');
-        //             if (!selectedTenantIds.includes(tenantId)) {
-        //                 const startVal = block.querySelector('input[name^="start"]').value;
-        //                 const endVal = block.querySelector('input[name^="end"]').value;
-
-        //                 savedPeriods[tenantId] = {
-        //                     start: startVal,
-        //                     end: endVal
-        //                 };
-
-        //                 block.remove();
-        //             }
-        //         });
-
-        //         selectedTenantIds.forEach(id => {
-        //             if (!periodscontainer-fluid.querySelector(`.period-block[data-tenant-id="${id}"]`)) {
-        //                 const newBlock = periodTemplate.cloneNode(true);
-        //                 newBlock.setAttribute('data-tenant-id', id);
-
-        //                 const tenantOption = tenantsSelect.querySelector(`option[value="${id}"]`);
-        //                 newBlock.querySelector('.tenant-name').textContent = tenantOption?.textContent || 'Empresa';
-
-        //                 const tenantIdInput = newBlock.querySelector('.tenant-id-input');
-        //                 tenantIdInput.name = 'tenant_ids[]';
-        //                 tenantIdInput.value = id;
-
-        //                 const startInput = newBlock.querySelector('.start-input');
-        //                 const endInput = newBlock.querySelector('.end-input');
-
-        //                 startInput.name = `start[${id}]`;
-        //                 endInput.name = `end[${id}]`;
-
-        //                 startInput.setAttribute('required', 'required');
-        //                 endInput.setAttribute('required', 'required');
-
-        //                 if (savedPeriods[id]) {
-        //                     startInput.value = savedPeriods[id].start || '';
-        //                     endInput.value = savedPeriods[id].end || '';
-        //                 }
-
-        //                 periodscontainer-fluid.appendChild(newBlock);
-        //             }
-        //         });
-        //     }
-
-        //     tenantsSelect.addEventListener('change', atualizarPeriodos);
-        //     atualizarPeriodos(); 
-
-        //     plainSelect.addEventListener('change', function () {
-        //         const plainId = this.value;
-                
-        //         if (!plainId) {
-        //             tenantsSelect.innerHTML = '';
-        //             tenantsSelect.dispatchEvent(new Event('change'));
-        //             return;
-        //         }
-
-        //         fetch(`/diagnostico/empresas-por-plano/${plainId}`)
-        //             .then(response => response.json())
-        //             .then(data => {
-        //                 tenantsSelect.innerHTML = '';
-        //                 data.forEach(tenant => {
-        //                     const option = document.createElement('option');
-        //                     option.value = tenant.id;
-        //                     option.text = tenant.nome;
-        //                     tenantsSelect.appendChild(option);
-        //                 });
-
-        //                 fetch(`/diagnostico/periodos-por-plano/${plainId}`)
-        //                     .then(resp => resp.json())
-        //                     .then(periodData => {                                
-        //                         Object.assign(tenantLastPeriods, periodData);
-        //                         tenantsSelect.dispatchEvent(new Event('change'));
-        //                     });
-        //             });
-        //     });
-        // });
     </script>
 @endpush

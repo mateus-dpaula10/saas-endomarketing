@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use App\Models\Answer;
 use App\Models\Tenant;
 use App\Models\Question;
-use App\Models\DiagnosticPeriod;
 use App\Models\StandardCampaign;
 use App\Models\Campaign;
 use App\Models\Plain;
@@ -21,196 +20,11 @@ class DiagnosticController extends Controller
      * Display a listing of the resource.
      */
     public function index() {
-        $user = Auth::user();
-        $now = Carbon::now();
-        $role = $user->role;
+        $authUser = auth()->user();
 
-        $tenant = null;
-        $tenantId = null;
+        $diagnostics = Diagnostic::with(['questions.options', 'tenants', 'campaigns', 'plain'])->get();
 
-        if ($role !== 'superadmin') {
-            $tenantId = $user->tenant_id;
-
-            if (!$tenantId) {
-                abort(403, 'Usuário sem vínculo com empresa.');
-            }
-
-            $tenant = Tenant::with('plain')->findOrFail($tenantId);
-
-            $contractStart = Carbon::parse($tenant->contract_start);
-            $isTenantActive = $tenant->active_tenant;
-
-            if ($now->lt($contractStart) || !$isTenantActive) {
-                return view('diagnostic.index', [
-                    'user' => $user,
-                    'availableDiagnostics' => collect(),
-                    'diagnostics' => collect(),
-                    'error' => 'Contrato ainda não iniciado.'
-                ]);
-            }
-        }
-
-        $diagnosticsQuery = Diagnostic::query();    
-        
-        if ($role !== 'superadmin') {
-            $diagnosticsQuery->whereHas('tenants', function ($query) use ($tenantId) {
-                $query->where('tenants.id', $tenantId);
-            });
-        }
-
-        $diagnostics = $diagnosticsQuery->with([
-            'periods' => function ($query) use ($tenantId, $role) {
-                if ($role !== 'superadmin') {
-                    $query->where('tenant_id', $tenantId);
-                }
-            },
-            'periods.tenant',
-            'tenants' => function ($query) use ($tenantId, $role) {
-                if ($role !== 'superadmin') {
-                    $query->where('tenants.id', $tenantId);
-                }
-            },
-            'questions'
-        ])->get();
-
-        $diagnosticData = collect();
-
-        foreach ($diagnostics as $diagnostic) {
-            $period = $diagnostic->periods
-                ->filter(function ($p) use ($tenant, $now, $role) {
-                    if ($role === 'superadmin') {
-                            return $now->between(Carbon::parse($p->start), Carbon::parse($p->end));
-                        }
-
-                    return 
-                        $tenant &&
-                        $p->tenant_id == $tenant->id &&
-                        $now->between(Carbon::parse($p->start), Carbon::parse($p->end)) &&
-                        $tenant->active_tenant && 
-                        Carbon::parse($tenant->contract_start)->lte(Carbon::parse($p->start));
-                })
-                ->first();
-
-            $questionsForUser = $diagnostic->questions->filter(function ($question) use ($role) {
-                if (!$question->pivot || !$question->pivot->target) return false;
-
-                $target = is_string($question->pivot->target)
-                    ? json_decode($question->pivot->target, true)
-                    : $question->pivot->target;
-
-                return is_array($target) && in_array($role, $target);
-            });
-
-            $hasQuestions = $questionsForUser->isNotEmpty();
-            $hasAnswered = false;
-
-            if ($period && $hasQuestions) {
-                $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
-                    ->where('diagnostic_period_id', $period->id)
-                    ->where('user_id', $user->id)
-                    ->exists();
-            }
-
-            $hasAnsweredAnyPeriod = Answer::where('diagnostic_id', $diagnostic->id)
-                ->where('user_id', $user->id)
-                ->exists();
-
-            $isAvailable = $period && !$hasAnswered && $hasQuestions;
-
-            $diagnosticData->push([
-                'diagnostic'            => $diagnostic,
-                'period'                => $period,
-                'questions'             => $questionsForUser,
-                'hasQuestions'          => $hasQuestions,
-                'hasAnswered'           => $hasAnswered,
-                'hasAnsweredAnyPeriod'  => $hasAnsweredAnyPeriod,
-                'isAvailable'           => $isAvailable,
-            ]);
-        }
-
-        return view('diagnostic.index', [
-            'user'                  => $user,
-            'availableDiagnostics'  => $diagnosticData->where('isAvailable', true),
-            'diagnostics'           => $diagnosticData->where('isAvailable', false)
-        ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        $plains = Plain::all();
-
-        $questions = Question::select('id', 'text', 'category')->get();
-
-        $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
-            return $items->map(fn($q) => ['id' => $q->id, 'text' => $q->text])->values();
-        });
-
-        return view ('diagnostic.create', compact('plains', 'perguntasPorCategoria'));
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title'                  => 'required|string',
-            'description'            => 'nullable|string',
-            'questions_text'         => 'required|array',
-            'questions_text.*'       => 'nullable|exists:questions,id',
-            'questions_custom'       => 'array',
-            'questions_custom.*'     => 'nullable|string',
-            'questions_target'       => 'required|array',
-            'questions_target.*'     => 'required|array',
-            'questions_target.*.*'   => 'required|in:admin,user',
-            'questions_category'     => 'required|array',
-            'questions_category.*'   => 'nullable|string',
-            'plain_id'               => 'required|exists:plains,id',
-            'start'                  => 'required|date',
-            'end'                    => 'required|date|after_or_equal:start'
-        ]);
-
-        $diagnostic = Diagnostic::create([
-            'title'       => $request->title,
-            'description' => $request->description,
-            'plain_id'    => $request->plain_id
-        ]);
-
-        foreach ($request->questions_text as $index => $questionId) {
-            $text     = $request->questions_custom[$index] ?? null;
-            $targets   = $request->questions_target[$index] ?? [];
-            $category = $request->questions_category[$index] ?? null;
-
-            if ($questionId) {                
-                $diagnostic->questions()->attach($questionId, ['target' => json_encode($targets)]);                
-            } elseif($text) {
-                $newQuestion = Question::create([
-                    'text'          => $text,
-                    'category'      => $category,
-                    'target'        => $targets,
-                    'diagnostic_id' => $diagnostic->id,
-                ]);
-
-                $diagnostic->questions()->attach($newQuestion->id, ['target' => json_encode($targets)]);
-            }
-        }
-
-        $tenants = Tenant::where('plain_id', $diagnostic->plain_id)->get();
-
-        foreach ($tenants as $tenant) {
-            $diagnostic->tenants()->attach($tenant->id);
-
-            $diagnostic->periods()->create([
-                'tenant_id' => $tenant->id,
-                'start'     => $request->start,
-                'end'       => $request->end
-            ]);
-        }
-
-        return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico criado com sucesso.');
+        return view ('diagnostic.index', compact('authUser', 'diagnostics'));
     }
 
     /**
@@ -226,28 +40,48 @@ class DiagnosticController extends Controller
      */
     public function edit(Request $request, string $id)
     {
-        $diagnostic = Diagnostic::with('questions', 'tenants', 'periods')->findOrFail($id);
+        $diagnostic = Diagnostic::with('questions', 'tenants')->findOrFail($id);
 
         $linkedTenants = $diagnostic->tenants;
-        $allTenants = Tenant::where('plain_id', $diagnostic->plain_id)->get();
 
-        $periodsByTenant = [];
-        foreach ($linkedTenants as $tenant) {
-            $lastPeriod = $diagnostic->periods
-                ->where('tenant_id', $tenant->id)
-                ->sortByDesc('end')
-                ->first();
-            $periodsByTenant[$tenant->id] = $lastPeriod;
-        }
+        $allTenants = Tenant::where('plain_id', $diagnostic->plain_id)->get();
 
         $questions = Question::whereDoesntHave('diagnostics', function ($q) use ($diagnostic) {
             $q->where('diagnostics.id', $diagnostic->id);
         })->get();
 
+        if ($diagnostic->diagnostic_type === 'cultura') {
+            $categorias = [
+                'identidade_proposito' => 'Identidade e Propósito',
+                'valores_comportamentos' => 'Valores e Comportamentos',
+                'ambiente_clima' => 'Ambiente e Clima',
+                'comunicacao_lideranca' => 'Comunicação e Liderança',
+                'processos_praticas' => 'Processos e Práticas',
+                'reconhecimento_celebracao' => 'Reconhecimento e Celebração',
+                'diversidade_pertencimento' => 'Diversidade e Pertencimento',
+                'aspiracoes_futuro' => 'Aspirações e Futuro'
+            ];
+        } elseif ($diagnostic->diagnostic_type === 'comunicacao') {
+            $categorias = [
+                'contratar' => 'Contratar',
+                'celebrar' => 'Celebrar',
+                'compartilhar' => 'Compartilhar',
+                'inspirar' => 'Inspirar',
+                'falar' => 'Falar',
+                'escutar' => 'Escutar',
+                'cuidar' => 'Cuidar',
+                'desenvolver' => 'Desenvolver',
+                'agradecer' => 'Agradecer'
+            ];
+        } else {
+            $categorias = []; 
+        }
+
         $perguntasPorCategoria = $questions->groupBy('category')->map(function ($items) {
             return $items->map(fn($q) => [
                 'id'     => $q->id,
-                'text'   => $q->text
+                'text'   => $q->text,
+                'type'   => $q->type,
             ])->values();
         });
 
@@ -257,9 +91,9 @@ class DiagnosticController extends Controller
             'diagnostic',
             'linkedTenants',
             'allTenants',
-            'periodsByTenant',
             'perguntasPorCategoria',
-            'plains'
+            'plains',
+            'categorias'
         ));
     }
 
@@ -575,70 +409,5 @@ class DiagnosticController extends Controller
         }
 
         return redirect()->route('diagnostico.index')->with('success', 'Respostas enviadas com sucesso!');
-    }
-
-    public function reabrir(Request $request, string $id) {
-        $user = auth()->user();
-
-        if ($user->role !== 'superadmin') {
-            abort(403, 'Acesso não autorizado.');
-        }
-
-        $diagnostic = Diagnostic::with('periods', 'tenants')->findOrFail($id);
-        $tenantId = $request->get('tenant');
-
-        if (!$tenantId || !$diagnostic->tenants->contains('id', $tenantId)) {
-            return back()->with('error', 'Empresa não vinculada ao diagnóstico.');
-        }
-
-        $lastPeriod = $diagnostic->periods
-            ->where('tenant_id', $tenantId)
-            ->sortByDesc('end')
-            ->first();
-
-        $characteristics = Tenant::find($tenantId)->plain->characteristics;
-
-        $diagnosticsPerMonth = $characteristics['diagnostics_per_month'] ?? 0;
-
-        $start = $lastPeriod
-            ? Carbon::parse($lastPeriod->end)->addDay()
-            : now()->startOfDay();
-
-        $periodCount = match ($diagnosticsPerMonth) {
-            1       => 1,
-            2       => 2,
-            3       => 3,
-            default => 1
-        };
-
-        $duration = match ($diagnosticsPerMonth) {
-            1       => 30,
-            2       => 15,
-            3       => 10,
-            default => 30
-        };
-
-        for ($i = 0; $i < $periodCount; $i++) {
-            $periodStart = (clone $start)->addDays($duration * $i);
-            $periodEnd = (clone $periodStart)->addDays($duration - 1);
-
-            // cria novos periodos para empresa liberada
-            $diagnostic->periods()->create([
-                'tenant_id' => $tenantId,
-                'start'     => $periodStart,
-                'end'       => $periodEnd
-            ]);
-    
-            // subscreve novos periodos para empresa liberada
-            // $diagnostic->periods()->updateOrCreate(
-            //     ['tenant_id' => $tenantId],
-            //     [
-            //         'start'  => $start,
-            //         'end'    => $end,
-            //     ]
-            // );
-        }
-        
-        return back()->with('success', "{$periodCount} novos(s) período(s) de resposta liberado(s)!");
     }
 }
