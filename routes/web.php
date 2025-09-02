@@ -12,33 +12,31 @@ use App\Http\Controllers\AdminNotificationController;
 use App\Http\Controllers\AdministrationController;
 use Illuminate\Support\Facades\Http;
 
+// landing page
 Route::get('/', [HomeController::class, 'index'])->name('index');
-Route::get('/login', [AuthController::class, 'index'])->name('login.index');
-Route::post('/login', [AuthController::class, 'login'])->name('login.login');
-Route::post('/password-reset', [AuthController::class, 'passwordReset'])->name('password.reset');
-Route::get('/admin/password-reset/{user}', [AuthController::class, 'showResetForm'])->name('admin.reset.password.form');
-Route::post('/admin/password-reset/{user}', [AuthController::class, 'resetPassword'])->name('admin.reset.password');
-Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 Route::post('/send-email', [HomeController::class, 'store'])->name('home.send.email');
 
+// autenticacao
+Route::get('/login', [AuthController::class, 'index'])->name('login.index');
+Route::post('/login', [AuthController::class, 'login'])->name('login.login');
+Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
+
+// todo usuario logado
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);  
+
     Route::get('/usuarios', [UserController::class, 'index'])->name('usuario.index');
     Route::get('/usuarios/{usuario}/edit', [UserController::class, 'edit'])->name('usuario.edit');
     Route::patch('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuario.update');
-    Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
-    Route::get('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'showAnswerForm'])->name('diagnostico.answer.form');
-    Route::post('/diagnostico/{diagnostico}/answer', [DiagnosticController::class, 'submitAnswer'])->name('diagnostico.answer');
-    Route::get('/notificacoes', [DashboardController::class, 'notification'])->name('notification.index');
 
+    Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
+
+    // apenas superadmin
     Route::middleware(['auth', 'role:superadmin'])->group(function () {
-        Route::resource('/empresa', TenantController::class);    
         Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
         Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
         Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy'); 
-        Route::get('/diagnostico/empresas-por-plano/{plainId}', [DiagnosticController::class, 'empresasPorPlano'])->name('diagnostico.empresas.plano');    
-        Route::get('/diagnostico/periodos-por-plano/{plainId}', [DiagnosticController::class, 'getPeriodsByPlain'])->name('diagnostico.empresas.periodos.plano');    
-        Route::get('/diagnostico/perguntas-por-plano/{plainId}/{diagnosticId}', [DiagnosticController::class, 'getPerguntasPorPlano'])->name('diagnostico.empresas.perguntas.plano');  
+
         Route::get('/consulta-cnpj/{cnpj}', function ($cnpj) {
             $cnpj = preg_replace('/\D/', '', $cnpj);
             $response = Http::get("https://www.receitaws.com.br/v1/cnpj/$cnpj");
@@ -46,12 +44,12 @@ Route::middleware(['auth'])->group(function () {
         });
     });
     
+    // apenas admin
     Route::middleware(['auth', 'role:admin'])->group(function () {
-        Route::get('/diagnostico/disponiveis', [DiagnosticController::class, 'available'])->name('diagnostico.available');    
-        Route::post('/admin/notify-pending', [AdminNotificationController::class, 'notifyPendingUsers'])->name('admin.notify.pending');
         Route::get('/administracao', [AdministrationController::class, 'index'])->name('administration.index');
     });
     
+    // superadmin e admin
     Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
         Route::get('/usuarios/create', [UserController::class, 'create'])->name('usuario.create');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuario.store');    

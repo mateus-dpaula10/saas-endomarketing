@@ -17,172 +17,7 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $user = auth()->user();
-        $role = $user->role;
-        $tenantId = $user->tenant_id;
-        $now = Carbon::now();
-
-        $plano = null;
-        if ($role !== 'superadmin') {
-            $plano = $user->tenant->plain_id ?? 1;
-        }
-
-        $nomesCategorias = [
-            'comu_inte' => 'Comunicação interna',
-            'reco_valo' => 'Reconhecimento e Valorização',
-            'clim_orga' => 'Clima Organizacional',
-            'cult_orga' => 'Cultura Organizacional',
-            'dese_capa' => 'Desenvolvimento e Capacitação',
-            'lide_gest' => 'Liderança e Gestão',
-            'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
-            'pert_enga' => 'Pertencimento e Engajamento'
-        ];
-
-        $campanhas = collect();
-        if (in_array($plano, [2, 3]) || $role === 'superadmin') {
-            $campanhas = Campaign::with(['standardCampaign.content', 'tenant'])
-                ->where('is_auto', true)
-                ->when($role !== 'superadmin', fn($q) => $q->where('tenant_id', $tenantId))
-                ->whereDate('start_date', '<=', $now)
-                ->whereDate('end_date', '>=', $now)
-                ->orderBy('start_date', 'desc')
-                ->get();
-        }
-
-        if ($role === 'superadmin') {
-            $respostas = Answer::with(['question', 'period', 'tenant'])->get();
-
-            if ($respostas->isEmpty()) {
-                return view('dashboard.index', [
-                    'semRespostas' => true,
-                    'campanhas'    => $campanhas,
-                    'plano'        => $plano,
-                    'user'         => $user
-                ]);
-            }
-
-            $respostasPorTenant = $respostas->groupBy(fn ($r) => $r->tenant->nome ?? 'Empresa desconhecida');
-            $analisesPorEmpresa = [];
-
-            foreach ($respostasPorTenant as $empresa => $respostasEmpresa) {
-                $grupoPorPeriodo = $respostasEmpresa->groupBy('diagnostic_period_id');
-                $dadosPorCategoria = [];
-
-                $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$dadosPorCategoria, $nomesCategorias) {
-                    $periodo = $grupoPeriodo->first()->period;
-                    $label = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
-
-                    $grupoPeriodo->groupBy(fn($r) => $r->question->category)
-                        ->each(function ($grupoCategoria, $categoria) use (&$dadosPorCategoria, $label, $nomesCategorias) {
-                            $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
-                            $media = round($grupoCategoria->avg('note'), 2);
-                            $dadosPorCategoria[$nomeLegivel][$label] = $media;
-                        });
-                });
-
-                $analisesPorEmpresa[$empresa] = $dadosPorCategoria;
-            }
-
-            $campanhasPorEmpresa = [];
-            foreach ($campanhas as $campanha) {
-                $tenant = $campanha->tenant;
-                if (!$tenant) continue;
-                $campanhasPorEmpresa[$tenant->nome][] = $campanha;
-            }
-
-            return view('dashboard.index', [
-                'analisesPorEmpresa'  => $analisesPorEmpresa,
-                'campanhas'           => $campanhas,
-                'campanhasPorEmpresa' => $campanhasPorEmpresa,
-                'plano'               => $plano,
-                'user'                => $user
-            ]);
-        }
-
-        // if (in_array($plano, [1, 2, 3])) {
-        //     return view('dashboard.index', [
-        //         'user'                   => $user,
-        //         'evolucaoCategorias'     => $evolucaoCategorias ?: null,
-        //         'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
-        //         'diagnostics'            => $diagnosticData->where('isAvailable', false),
-        //         'campanhas'              => $campanhas,
-        //         'plano'                  => $plano
-        //     ]);
-        // }
-
-        $respostas = Answer::with(['question', 'period'])
-            ->where('tenant_id', $tenantId)
-            ->get();
-
-        $grupoPorPeriodo = $respostas->groupBy('diagnostic_period_id');
-        $evolucaoCategorias = [];
-
-        $grupoPorPeriodo->each(function ($grupoPeriodo) use (&$evolucaoCategorias, $nomesCategorias) {
-            $periodo = $grupoPeriodo->first()->period;
-            if (!$periodo) return;
-
-            $label = Carbon::parse($periodo->start)->format('d/m/Y') . ' - ' . Carbon::parse($periodo->end)->format('d/m/Y');
-
-            $grupoPeriodo->groupBy(fn($resposta) => $resposta->question->category)
-                ->each(function ($grupoCategoria, $categoria) use (&$evolucaoCategorias, $label, $nomesCategorias) {
-                    $nomeLegivel = $nomesCategorias[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria));
-                    $media = round($grupoCategoria->avg('note'), 2);
-                    $evolucaoCategorias[$nomeLegivel][$label] = $media;
-                });
-        });
-
-        $diagnostics = Diagnostic::with(['periods', 'questions'])
-            ->whereHas('tenants', fn($q) => $q->where('tenants.id', $tenantId))
-            ->get();
-
-        $diagnosticData = collect();
-
-        foreach ($diagnostics as $diagnostic) {
-            $period = $diagnostic->periods->where('tenant_id', $tenantId)
-                ->filter(fn($p) => $now->between($p->start, $p->end))
-                ->first();
-
-            $questions = $diagnostic->questions->filter(function ($q) use ($role) {
-                if (!$q->pivot || !$q->pivot->target) return false;
-                $targets = json_decode($q->pivot->target, true);
-                return in_array($role, $targets);
-            });
-
-            $hasQuestions = $questions->isNotEmpty();
-            $hasAnswered = false;
-            
-            if ($period && $hasQuestions) {
-                $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
-                    ->where('diagnostic_period_id', $period->id)
-                    ->where('user_id', $user->id)
-                    ->exists();
-            }
-
-            $hasAnsweredAnyPeriod = Answer::where('diagnostic_id', $diagnostic->id)
-                ->where('user_id', $user->id)
-                ->exists();
-
-            $isAvailable = $period && !$hasAnswered && $hasQuestions;
-
-            $diagnosticData->push([
-                'diagnostic'            => $diagnostic,
-                'period'                => $period,
-                'questions'             => $questions,
-                'hasQuestions'          => $hasQuestions,
-                'hasAnswered'           => $hasAnswered,
-                'hasAnsweredAnyPeriod'  => $hasAnsweredAnyPeriod,
-                'isAvailable'           => $isAvailable,
-            ]);
-        }
-
-        return view('dashboard.index', [
-            'user'                   => $user,
-            'evolucaoCategorias'     => $evolucaoCategorias ?: null,
-            'availableDiagnostics'   => $diagnosticData->where('isAvailable', true),
-            'diagnostics'            => $diagnosticData->where('isAvailable', false),
-            'campanhas'              => $campanhas,
-            'plano'                  => $plano
-        ]);
+        return view ('dashboard.index');
     }
 
     /**
@@ -233,52 +68,52 @@ class DashboardController extends Controller
         //
     }
 
-    public function notification() {
-        $user = auth()->user();
+    // public function notification() {
+    //     $user = auth()->user();
         
-        $diagnostics = Diagnostic::whereHas('periods', function($query) use ($user) {
-            $query->where('tenant_id', $user->tenant_id)
-                ->whereDate('start', '<=', now())
-                ->whereDate('end', '>=', now());
-        })->with(['periods' => function($query) use ($user) {
-            $query->where('tenant_id', $user->tenant_id)
-                ->whereDate('start', '<=', now())
-                ->whereDate('end', '>=', now());
-        }])->get();
+    //     $diagnostics = Diagnostic::whereHas('periods', function($query) use ($user) {
+    //         $query->where('tenant_id', $user->tenant_id)
+    //             ->whereDate('start', '<=', now())
+    //             ->whereDate('end', '>=', now());
+    //     })->with(['periods' => function($query) use ($user) {
+    //         $query->where('tenant_id', $user->tenant_id)
+    //             ->whereDate('start', '<=', now())
+    //             ->whereDate('end', '>=', now());
+    //     }])->get();
 
-        $diagnosticsNotAnswered = $diagnostics->filter(function($diagnostic) use ($user) {
-            $period = $diagnostic->periods->first();
+    //     $diagnosticsNotAnswered = $diagnostics->filter(function($diagnostic) use ($user) {
+    //         $period = $diagnostic->periods->first();
 
-            if (!$period) return false;
+    //         if (!$period) return false;
 
-            $hasTargetedQuestions = DB::table('diagnostic_question')
-                ->join('questions', 'diagnostic_question.question_id', '=', 'questions.id')
-                ->where('diagnostic_question.diagnostic_id', $diagnostic->id)
-                ->whereJsonContains('diagnostic_question.target', $user->role)
-                ->exists();
+    //         $hasTargetedQuestions = DB::table('diagnostic_question')
+    //             ->join('questions', 'diagnostic_question.question_id', '=', 'questions.id')
+    //             ->where('diagnostic_question.diagnostic_id', $diagnostic->id)
+    //             ->whereJsonContains('diagnostic_question.target', $user->role)
+    //             ->exists();
 
-            if (!$hasTargetedQuestions) return false;
+    //         if (!$hasTargetedQuestions) return false;
 
-            $alreadyAnswered = $diagnostic->answers()
-                ->where('user_id', $user->id)
-                ->where('diagnostic_period_id', $period->id)
-                ->exists();
+    //         $alreadyAnswered = $diagnostic->answers()
+    //             ->where('user_id', $user->id)
+    //             ->where('diagnostic_period_id', $period->id)
+    //             ->exists();
 
-            return !$alreadyAnswered;
-        })->values();
+    //         return !$alreadyAnswered;
+    //     })->values();
 
-        $notifications = $diagnosticsNotAnswered->map(function($diag) {
-            $period = $diag->periods->first();
-            if (!$period) return null;
+    //     $notifications = $diagnosticsNotAnswered->map(function($diag) {
+    //         $period = $diag->periods->first();
+    //         if (!$period) return null;
 
-            return [
-                'id' => $diag->id,
-                'title' => $diag->title,
-                'deadline' => $period->end->toDateString(),
-                'days_left' => now()->diffInDays($period->end, false),
-            ];
-        })->filter()->values();
+    //         return [
+    //             'id' => $diag->id,
+    //             'title' => $diag->title,
+    //             'deadline' => $period->end->toDateString(),
+    //             'days_left' => now()->diffInDays($period->end, false),
+    //         ];
+    //     })->filter()->values();
 
-        return view('dashboard', ['notifications' => $notifications ?? collect()]);
-    }
+    //     return view('dashboard', ['notifications' => $notifications ?? collect()]);
+    // }
 }

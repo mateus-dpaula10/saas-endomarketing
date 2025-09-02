@@ -58,7 +58,7 @@
 
     <main>
         <div id="barra-notificacao">
-            <div class="position-relative" id="notification"> 
+            {{-- <div class="position-relative" id="notification"> 
                 <i class="fa-regular fa-bell {{ $notificationCount > 0 ? 'bell-shake' : '' }}" id="icon-notification" title="Notificações"></i>
                 @if($notificationCount > 0)
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
@@ -66,10 +66,10 @@
                         <span class="visually-hidden">notificações não lidas</span>
                     </span>
                 @endif
-            </div>            
+            </div> --}}
         </div>
 
-        <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+        {{-- <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -95,7 +95,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         @yield('content')
     </main>
