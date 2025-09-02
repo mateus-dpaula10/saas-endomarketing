@@ -61,7 +61,7 @@
                                             @endif                                          
                                         
                                             @if ($authUser->role === 'admin')
-                                                <button class="btn btn-secondary btn-sm">
+                                                <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                                                     Visualizar respostas
                                                 </button>
                                             @endif
@@ -117,6 +117,39 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                @if ($authUser->role === 'admin')
+                                    <div class="modal fade" id="respostasModal-{{ $diagnostic->id }}" tabindex="-1" aria-labelledby="respostasModalLabel-{{ $diagnostic->id }}" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered modal-xl">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Respostas do Diagnóstico '{{ $diagnostic->title }}'</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    @foreach ($data['answersGrouped'] as $group)
+                                                        <div class="mb-4">
+                                                            <label><strong>{{ $group['question']->text }}</strong></label>
+
+                                                            @if ($group['question']->type === 'fechada')
+                                                                <p>Média das respostas: <strong>{{ number_format($group['average'], 2, ',', '.') }}</strong></p>
+                                                            @else
+                                                                @forelse ($group['answers'] as $answer)
+                                                                    <textarea class="form-control mb-1 auto-resize" disabled>{{ $answer }}</textarea>
+                                                                @empty
+                                                                    <textarea class="form-control mb-1 auto-resize" disabled>Nenhuma resposta registrada</textarea>
+                                                                @endforelse
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             @endforeach
                         </tbody>
                     </table>
@@ -125,3 +158,14 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll("textarea.auto-resize").forEach(function (el) {
+                el.style.height = "auto"; 
+                el.style.height = el.scrollHeight + "px"; 
+            });
+        });
+    </script>
+@endpush

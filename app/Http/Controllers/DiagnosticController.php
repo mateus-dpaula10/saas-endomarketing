@@ -39,10 +39,36 @@ class DiagnosticController extends Controller
                     ->where('user_id', $authUser->id)
                     ->exists();
 
+                $answersGrouped = [];
+                
+                if ($authUser->role === 'admin') {
+                    $answersGrouped = $diagnostic->questions->map(function ($question) use ($diagnostic, $authUser) {
+                        $answers = Answer::where('diagnostic_id', $diagnostic->id)
+                            ->where('question_id', $question->id)
+                            ->where('tenant_id', $authUser->tenant_id)
+                            ->get();
+
+                        if ($question->type === 'fechada') {
+                            return [
+                                'question' => $question,
+                                'average'  => $answers->avg('note'),
+                                'answers'  => []
+                            ];
+                        }
+
+                        return [
+                            'question'     => $question,
+                            'average'      => null,
+                            'answers'      => $answers->pluck('text')
+                        ];
+                    });
+                }
+
                 return [
-                    'diagnostic'   => $diagnostic,
-                    'hasAnswered'  => $hasAnswered,
-                    'hasQuestions' => $diagnostic->questions->isNotEmpty(),
+                    'diagnostic'     => $diagnostic,
+                    'hasAnswered'    => $hasAnswered,
+                    'hasQuestions'   => $diagnostic->questions->isNotEmpty(),
+                    'answersGrouped' => $answersGrouped
                 ];
             });
         }
