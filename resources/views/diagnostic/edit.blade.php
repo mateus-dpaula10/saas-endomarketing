@@ -60,7 +60,7 @@
                         <label class="form-label'">Perguntas</label>
                         <div id="questions-wrapper">
                             @foreach ($diagnostic->questions as $index => $question)
-                                <div class="question-block mb-3 border rounded p-3 position-relative">
+                                <div class="question-block mb-3 border rounded p-3 position-relative" data-index="{{ $index }}">
                                     <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2" onclick="removeQuestion(this)">
                                         Remover
                                     </button>
@@ -68,22 +68,42 @@
                                     <input type="hidden" name="question_ids[]" value="{{ $question->id }}">
 
                                     <label class="form-label">Categoria</label>
-                                    <select name="questions_category[]" class="form-select mb-2" required>
+                                    <select name="questions_category[{{ $index }}]" class="form-select mb-2" required>
                                         @foreach ($categorias as $value => $label)
                                             <option value="{{ $value }}" {{ $question->category === $value ? 'selected' : '' }}>
                                                 {{ $label }}
                                             </option>
                                         @endforeach
                                     </select>
+                                    
+                                    <label class="form-label">Tipo</label>
+                                    <select name="questions_type[{{ $index }}]" class="form-select mb-2 question-type" onchange="toggleOptions(this, {{ $index }})">
+                                        <option value="aberta" {{ $question->type === 'aberta' ? 'selected' : '' }}>Aberta</option>
+                                        <option value="fechada" {{ $question->type === 'fechada' ? 'selected' : '' }}>Fechada</option>
+                                    </select>
 
                                     <label class="form-label">Texto da pergunta</label>
-                                    <select name="questions_text[{{ $index }}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, {{ $index }})">
-                                        @foreach (($perguntasPorCategoria[$question->category] ?? []) as $pergunta)
-                                            <option value="{{ $pergunta['id'] }}" {{ $pergunta['id'] == $question->id ? 'selected' : '' }}>
-                                                {{ $pergunta['text'] }}
-                                            </option>
-                                        @endforeach
-                                    </select>
+                                    <input 
+                                        type="text" 
+                                        name="questions_text[{{ $index }}]" 
+                                        class="form-control mb-2" 
+                                        value="{{ old('questions_text.' . $index, $question->text) }}"
+                                        required
+                                    >
+
+                                    <div class="options-wrapper {{ $question->type === 'fechada' ? '' : 'd-none' }}">
+                                        <label class="form-label">Opções</label>
+                                        <div class="options-list">
+                                            @foreach ($question->options as $optIndex => $option)
+                                                <div class="d-flex mb-2 option-item">
+                                                    <input type="text" name="questions_options[{{ $index }}][{{ $optIndex }}][text]" class="form-control me-2" placeholder="Opção" value="{{ $option->text }}">
+                                                    <input type="number" name="questions_options[{{ $index }}][{{ $optIndex }}][weight]" class="form-control w-25" placeholder="Peso" value="{{ $option->weight }}">
+                                                    <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removeOption(this)">x</button>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addOption(this, {{ $index }})">Adicionar opção</button>
+                                    </div>
 
                                     <label class="form-label">Público-alvo</label>
                                     <select name="questions_target[{{ $index }}][]" class="form-select" multiple required>
@@ -113,7 +133,6 @@
 
 @push('scripts')
     <script>
-        let perguntasPorCategoria = @json($perguntasPorCategoria); 
         let categorias = @json($categorias);
         let questionIndex = {{ count($diagnostic->questions ?? []) }};
 
@@ -136,12 +155,20 @@
                     ${categoriaOptions}
                 </select>
 
-                <label class="form-label">Texto da pergunta</label>
-                <select name="questions_text[${questionIndex}]" class="form-select mb-2 question-select" onchange="handleQuestionChange(this, ${questionIndex})">
-                    <option value="">Digite outra pergunta...</option>
+                <label class="form-label">Tipo</label>
+                <select name="questions_type[${questionIndex}]" class="form-select mb-2 question-type" onchange="toggleOptions(this, ${questionIndex})">
+                    <option value="aberta">Aberta</option>
+                    <option value="fechada">Fechada</option>
                 </select>
 
-                <input type="text" name="questions_custom[${questionIndex}]" class="form-control mb-2 question-input d-none" placeholder="Digite a pergunta">
+                <label class="form-label">Texto da pergunta</label>
+                <input type="text" name="questions_text[${questionIndex}]" class="form-control mb-2" placeholder="Digite a pergunta" required>
+
+                <div class="options-wrapper d-none">
+                    <label class="form-label">Opções</label>
+                    <div class="options-list"></div>
+                    <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addOption(this, ${questionIndex})">Adicionar opção</button>
+                </div>
 
                 <label class="form-label">Público-alvo</label>
                 <select name="questions_target[${questionIndex}][]" class="form-select" multiple required>
@@ -160,84 +187,34 @@
             if (block) block.remove();
         }
 
-        function atualizarPerguntas(select, index) {
-            const categoria = select.value;
-            const perguntas = perguntasPorCategoria[categoria] || [];
+        function toggleOptions(select, index) {
+            const block = document.querySelector(`.question-block[data-index="${index}"]`);
+            const optionsWrapper = block.querySelector('.options-wrapper');
 
-            const selectedIds = [];
-            document.querySelectorAll('.question-block').forEach(block => {
-                const textSelect = block.querySelector(`select[name^="questions_text["]`);
-                if (textSelect?.value) {
-                    selectedIds.push(textSelect.value);
-                }
-            });
-
-            const questionSelect = document.querySelector(`select[name="questions_text[${index}]"]`);
-            const questionInput = document.querySelector(`input[name="questions_custom[${index}]"]`);
-
-            questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
-
-            perguntas.forEach(pergunta => {
-                if (!selectedIds.includes(String(pergunta.id))) {
-                    const option = document.createElement('option');
-                    option.value = pergunta.id;
-                    option.textContent = pergunta.text;
-                    option.dataset.type = pergunta.type; 
-                    questionSelect.appendChild(option);
-                }
-            });
-
-            questionSelect.classList.remove('d-none');
-            questionInput.classList.add('d-none');
-            questionInput.value = '';
-        }
-
-        function handleQuestionChange(select, index) {
-            const input = document.querySelector(`input[name="questions_custom[${index}]"]`);
-            if (select.value === '') {
-                input.classList.remove('d-none');
+            if (select.value === 'fechada') {
+                optionsWrapper.classList.remove('d-none');
             } else {
-                const selectedOption = select.selectedOptions[0];
-                if (selectedOption?.dataset.type === 'textarea') {
-                    input.classList.remove('d-none');
-                } else {
-                    input.classList.add('d-none');
-                    input.value = '';
-                }
+                optionsWrapper.classList.add('d-none');
+                optionsWrapper.querySelector('.options-list').innerHTML = '';
             }
         }
 
-        const diagnosticId = {{ $diagnostic->id }};
+        function addOption(button, qIndex) {
+            const optionsList = button.closest('.options-wrapper').querySelector('.options-list');
+            const optIndex = optionsList.querySelectorAll('.option-item').length;
 
-        function carregarPerguntasDoPlano(plainId) {
-            if (!plainId) {
-                perguntasPorCategoria = {};
-                alert('Selecione um plano válido.');
-                return;
-            }
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'd-flex mb-2 option-item';
+            optionDiv.innerHTML = `
+                <input type="text" name="questions_options[${qIndex}][${optIndex}][text]" class="form-control me-2" placeholder="Opção">
+                <input type="number" name="questions_options[${qIndex}][${optIndex}][weight]" class="form-control w-25" placeholder="Peso">
+                <button type="button" class="btn btn-danger btn-sm ms-2" onclick="removeOption(this)">x</button>
+            `;
+            optionsList.appendChild(optionDiv);
+        }
 
-            fetch(`/diagnostico/perguntas-por-plano/${plainId}/${diagnosticId}`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Erro ao buscar perguntas');
-                    return response.json();
-                })
-                .then(data => {
-                    perguntasPorCategoria = data;
-
-                    document.querySelectorAll('#questions-wrapper .question-block').forEach(block => {
-                        const index = block.getAttribute('data-index');
-                        const categorySelect = block.querySelector(`select[name="questions_category[${index}]"]`);
-                        const questionSelect = block.querySelector(`select[name="questions_text[${index}]"]`);
-                        if (categorySelect && questionSelect) {
-                            categorySelect.value = '';
-                            questionSelect.innerHTML = `<option value="">Digite outra pergunta...</option>`;
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error('Erro no AJAX:', error);
-                    alert('Não foi possível carregar perguntas para o plano selecionado.');
-                });
+        function removeOption(button) {
+            button.closest('.option-item').remove();
         }
     </script>
 @endpush

@@ -28,14 +28,6 @@ class DiagnosticController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(Diagnostic $diagnostic)
-    {
-        //
-    }
-
-    /**
      * Show the form for editing the specified resource.
      */
     public function edit(Request $request, string $id)
@@ -50,7 +42,7 @@ class DiagnosticController extends Controller
             $q->where('diagnostics.id', $diagnostic->id);
         })->get();
 
-        if ($diagnostic->diagnostic_type === 'cultura') {
+        if ($diagnostic->type === 'cultura') {
             $categorias = [
                 'identidade_proposito' => 'Identidade e Propósito',
                 'valores_comportamentos' => 'Valores e Comportamentos',
@@ -61,7 +53,7 @@ class DiagnosticController extends Controller
                 'diversidade_pertencimento' => 'Diversidade e Pertencimento',
                 'aspiracoes_futuro' => 'Aspirações e Futuro'
             ];
-        } elseif ($diagnostic->diagnostic_type === 'comunicacao') {
+        } elseif ($diagnostic->type === 'comunicacao' || $diagnostic->type === 'comunicacao_campanhas') {
             $categorias = [
                 'contratar' => 'Contratar',
                 'celebrar' => 'Celebrar',
@@ -102,32 +94,33 @@ class DiagnosticController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $diagnostic = Diagnostic::with(['questions', 'periods', 'tenants'])->findOrFail($id);
+        $diagnostic = Diagnostic::with('questions')->findOrFail($id);
 
-        $rules = [
-            'title'                  => 'required|string',
-            'description'            => 'nullable|string',
-            'questions_text'         => 'required|array',
-            'questions_text.*'       => 'nullable|exists:questions,id',
-            'questions_target'       => 'required|array',
-            'questions_target.*'     => 'required|array',
-            'questions_target.*.*'   => 'required|in:admin,user',
-            'questions_category'     => 'required|array',
-            'questions_category.*'   => 'nullable|string',
-            // 'tenants'                => 'array',
-            // 'tenants.*'              => 'exists:tenants,id',
-            // 'tenant_ids'             => 'array',
-            'plain_id'               => 'nullable|exists:plains,id'
-        ];
+        $request->validate([
+            'title'                       => 'required|string',
+            'description'                 => 'nullable|string',
+            'questions_text'              => 'required|array',
+            'questions_text.*'            => 'nullable|string',
+            'questions_category'          => 'required|array',
+            'questions_category.*'        => 'nullable|string',
+            'questions_type'              => 'required|array',
+            'questions_type.*'            => 'in:aberta,fechada',
+            'questions_target'            => 'required|array',
+            'questions_target.*.*'        => 'required|in:admin,user',
+            'questions_options'           => 'array',
+        ], [
+            'title.required'              => 'O título do diagnóstico é obrigatório.',
+            'title.string'                => 'O título deve ser uma string válida.',
+            'questions_text.required'     => 'É necessário adicionar pelo menos uma pergunta.',
+            'questions_text.*.string'     => 'Cada pergunta deve ser um texto válido.',
+            'questions_category.required' => 'Cada pergunta precisa ter uma categoria.',
+            'questions_type.required'     => 'O tipo da pergunta é obrigatório.',
+            'questions_type.*.in'         => 'O tipo da pergunta deve ser "aberta" ou "fechada".',
+            'questions_target.required'   => 'É necessário selecionar pelo menos um público-alvo.',
+            'questions_target.*.*.in'     => 'O público-alvo deve ser "Administrador" ou "Colaborador".',
+            'questions_options.array'     => 'As opções da pergunta devem ser um array válido.',
+        ]);
 
-        // if ($request->filled('tenant_ids')) {
-        //     foreach ($request->input('tenant_ids', []) as $tenantId) {
-        //         $rules["start.$tenantId"] = 'required|date';
-        //         $rules["end.$tenantId"] = 'required|date|after_or_equal:start.' . $tenantId;
-        //     }
-        // }
-
-        $request->validate($rules);
 
         $diagnostic->update([
             'title'       => $request->title,
@@ -137,46 +130,59 @@ class DiagnosticController extends Controller
 
         $diagnostic->questions()->detach();
 
-        foreach ($request->questions_text as $index => $questionId) {
-            $targets   = $request->questions_target[$index] ?? [];
+        foreach ($request->questions_text as $index => $text) {
+            $type     = $request->questions_type[$index] ?? 'aberta';
             $category  = $request->questions_category[$index] ?? null;
-            $text      = $request->questions_custom[$index] ?? null;
+            $targets   = $request->questions_target[$index] ?? [];
+
+            $questionId = $request->question_ids[$index] ?? null;
 
             if ($questionId) {
-                $diagnostic->questions()->attach($questionId, ['target' => json_encode($targets)]);                    
-            } elseif ($text) {
-                $newQuestion = Question::create([
-                    'text'          => $text,
-                    'category'      => $category,
-                    'target'        => $targets,
-                    'diagnostic_id' => $diagnostic->id
+                $question = Question::find($questionId);
+                $question->update([
+                    'text'     => $text,
+                    'category' => $category,
+                    'type'     => $type
                 ]);
+            } else {
+                $question = Question::create([
+                    'text'     => $text,
+                    'category' => $category,
+                    'type'     => $type,
+                ]);
+            }
                 
-                $diagnostic->questions()->attach($newQuestion->id, ['target' => json_encode($targets)]);
+            $diagnostic->questions()->attach($question->id, [
+                'target' => json_encode($targets)
+            ]);
+
+            if ($type === 'fechada') {
+                $submittedOptions = $request->questions_options[$index] ?? [];
+                $existingOptions = $question->options()->pluck('id')->toArray();
+                $submittedIds = [];
+
+                foreach ($submittedOptions as $opt) {
+                    if (isset($opt['id']) && in_array($opt['id'], $existingOptions)) {
+                        $option = $question->options()->find($opt['id']);
+                        $option->update([
+                            'text'   => $opt['text'],
+                            'weight' => $opt['weight'],
+                        ]);
+                        $submittedIds[] = $option->id;
+                    } else {
+                        $option = $question->options()->create([
+                            'text'   => $opt['text'],
+                            'weight' => $opt['weight'],
+                        ]);
+                        $submittedIds[] = $option->id;
+                    }
+                }
+
+                $question->options()->whereNotIn('id', $submittedIds)->delete();
+            } else {
+                $question->options()->delete();
             }
         }
-        
-        // $selectedTenantIds = $request->input('tenants', []);
-        // $diagnostic->tenants()->sync($selectedTenantIds ?? []);
-
-        // $diagnostic->periods()
-        //     ->when(!empty($selectedTenantIds), function ($query) use ($selectedTenantIds) {
-        //         $query->whereNotIn('tenant_id', $selectedTenantIds);
-        //     }, function ($query) {
-        //         $query->delete(); 
-        //     })->delete();
-
-        // foreach ($selectedTenantIds as $tenantId) {
-        //     $start = $request->start[$tenantId] ?? null;
-        //     $end   = $request->end[$tenantId] ?? null;
-
-        //     if ($start && $end) {
-        //         $period = $diagnostic->periods()->firstOrNew(['tenant_id' => $tenantId]);
-        //         $period->start = Carbon::parse($start);
-        //         $period->end   = Carbon::parse($end);
-        //         $period->save();
-        //     }
-        // }
 
         return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico atualizado com sucesso!');
     }
@@ -229,7 +235,16 @@ class DiagnosticController extends Controller
      */
     public function destroy(string $id)
     {
-        $diagnostic = Diagnostic::with('questions', 'answers', 'tenants', 'periods', 'campaigns')->findOrFail($id);
+        $diagnostic = Diagnostic::with('questions.options')->findOrFail($id);
+
+        foreach ($diagnostic->questions as $question) {
+            if ($question->diagnostics()->where('diagnostics.id', '!=', $diagnostic->id)->count() === 0) {
+                $question->options()->delete();
+                $question->delete();
+            }
+        }
+
+        $diagnostic->questions()->detach();
 
         $diagnostic->delete();
 
