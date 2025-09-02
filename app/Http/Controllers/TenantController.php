@@ -15,8 +15,15 @@ class TenantController extends Controller
      */
     public function index()
     {
-        $data = Tenant::all();
-        return view ('tenant.index', ['empresas' => $data]);
+        $authUser = auth()->user();
+
+        if ($authUser->role === 'superadmin') {
+            $empresas = Tenant::all();
+        } elseif ($authUser->role === 'admin') {
+            $empresas = Tenant::where('id', $authUser->tenant_id)->get();
+        }
+
+        return view ('tenant.index', compact('authUser', 'empresas'));
     }
 
     /**

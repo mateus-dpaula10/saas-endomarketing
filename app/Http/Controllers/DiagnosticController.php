@@ -19,9 +19,35 @@ class DiagnosticController extends Controller
     public function index() {
         $authUser = auth()->user();
 
-        $diagnostics = Diagnostic::with(['questions.options', 'tenants', 'campaigns', 'plain'])->get();
+        $diagnostics = Diagnostic::with(['questions.options', 'campaigns', 'plain'])->get();
 
-        return view ('diagnostic.index', compact('authUser', 'diagnostics'));
+        if ($authUser->role === 'superadmin') {
+            $diagnosticsFiltered = $diagnostics->map(function ($diagnostic) use ($authUser) {
+                return [
+                    'diagnostic'   => $diagnostic,
+                    'hasAnswered'  => false,
+                    'hasQuestions' => $diagnostic->questions->isNotEmpty()
+                ];
+            });
+        } else {
+            $tenantPlainId = $authUser->tenant->plain_id ??null;
+            
+            $diagnosticsFiltered = $diagnostics->filter(function ($diagnostic) use ($tenantPlainId) {
+                return $diagnostic->plain_id === $tenantPlainId;
+            })->map(function ($diagnostic) use ($authUser) {
+                $hasAnswered = \App\Models\Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('user_id', $authUser->id)
+                    ->exists();
+
+                return [
+                    'diagnostic'   => $diagnostic,
+                    'hasAnswered'  => $hasAnswered,
+                    'hasQuestions' => $diagnostic->questions->isNotEmpty(),
+                ];
+            });
+        }
+
+        return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered'));
     }
 
     public function edit(Request $request, string $id)
@@ -194,5 +220,51 @@ class DiagnosticController extends Controller
         $diagnostic->delete();
 
         return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico excluído com sucesso!');
+    }
+
+    public function answer(Diagnostic $diagnostic) {
+        return view ('diagnostic.answer', compact('diagnostic'));
+    }
+
+    public function submitAnswers(Diagnostic $diagnostic, Request $request) {
+        $authUser = auth()->user();
+
+        $answersData = $request->input('answers', []);
+
+        foreach ($answersData as $questionId => $answer) {
+            $question = Question::find($questionId);
+            if (!$question) continue;
+
+            if ($question->type === 'fechada' && isset($answer['note'])) {
+                Answer::updateOrCreate(
+                    [
+                        'diagnostic_id' => $diagnostic->id,
+                        'question_id'   => $questionId,
+                        'user_id'       => $authUser->id,
+                        'tenant_id'     => $authUser->tenant->id
+                    ],
+                    [
+                        'note'          => $answer['note']
+                    ]
+                );
+            }
+
+            if ($question->type === 'aberta' && isset($answer['text'])) {
+                Answer::updateOrCreate(
+                    [
+                        'diagnostic_id' => $diagnostic->id,
+                        'question_id'   => $questionId,
+                        'user_id'       => $authUser->id,
+                        'tenant_id'     => $authUser->tenant->id
+                    ],
+                    [
+                        'note'          => null,
+                        'text'          => $answer['text']
+                    ]
+                );
+            }
+        }
+
+        return redirect()->route('diagnostico.index')->with('success', 'Diagnóstico respondido com sucesso.');
     }
 }

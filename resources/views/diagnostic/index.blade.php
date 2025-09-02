@@ -40,11 +40,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach ($diagnostics as $data)
+                            @foreach ($diagnosticsFiltered as $data)
                                 @php
-                                    $diagnostic = $data['diagnostic'] ?? $data;
-                                    $hasQuestions = $data['hasQuestions'] ?? $diagnostic->questions->isNotEmpty();
-                                    $hasAnswered = $data['hasAnswered'] ?? false;
+                                    $diagnostic  = $data['diagnostic'];
+                                    $hasAnswered  = $data['hasAnswered'];
+                                    $hasQuestions = $data['hasQuestions'];
                                 @endphp
 
                                 <tr>
@@ -53,14 +53,18 @@
                                     <td>{{ $diagnostic->created_at->format('d/m/Y') }}</td>
                                     <td>{{ $diagnostic->plain->name ?? '-' }}</td>
                                     <td>      
-                                        @if (in_array($authUser->role, ['admin', 'user']))                                            
-                                            <a href="#" class="btn btn-primary btn-sm">Responder</a>
+                                        @if (in_array($authUser->role, ['admin', 'user']))  
+                                            @if (!$hasAnswered && $hasQuestions)
+                                                <a href="{{ route('diagnostico.answer', $diagnostic) }}" class="btn btn-primary btn-sm">Responder</a>
+                                            @else
+                                                <button class="btn btn-warning btn-sm">Já respondeu</button>
+                                            @endif                                          
                                         
                                             @if ($authUser->role === 'admin')
                                                 <button class="btn btn-secondary btn-sm">
                                                     Visualizar respostas
                                                 </button>
-                                            @else
+                                            @endif
                                         @elseif ($authUser->role === 'superadmin')
                                             <button class="btn btn-primary btn-sm mb-1" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>
                                             <a href="{{ route('diagnostico.edit', $diagnostic->id) }}" class="btn btn-warning btn-sm mb-1">Editar</a>

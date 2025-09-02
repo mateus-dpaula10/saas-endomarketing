@@ -30,6 +30,8 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuario.update');
 
     Route::get('/diagnostico', [DiagnosticController::class, 'index'])->name('diagnostico.index');
+    Route::get('/diagnostico/{diagnostic}/answer', [DiagnosticController::class, 'answer'])->name('diagnostico.answer');
+    Route::post('/diagnostico/{diagnostic}/answer', [DiagnosticController::class, 'submitAnswers'])->name('diagnostico.submitAnswers');
 
     // apenas superadmin
     Route::middleware(['auth', 'role:superadmin'])->group(function () {
@@ -42,6 +44,8 @@ Route::middleware(['auth'])->group(function () {
             $response = Http::get("https://www.receitaws.com.br/v1/cnpj/$cnpj");
             return response()->json($response->json());
         });
+
+        Route::resource('/empresa', TenantController::class);
     });
     
     // apenas admin

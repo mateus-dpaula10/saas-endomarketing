@@ -25,7 +25,7 @@
                                 <th scope="col">#</th>
                                 <th scope="col">Nome</th>
                                 <th scope="col">Plano</th>
-                                <th scope="col">Ativo</th>
+                                <th scope="col">Ativo</th>                                
                                 <th scope="col">Ações</th>
                             </tr>
                         </thead>
@@ -46,7 +46,7 @@
                                             @method('DELETE')
 
                                             <button type="submit" class="btn btn-danger">Excluir</button>
-                                        </form>
+                                        </form>         
                                     </td>
                                 </tr>
                             @endforeach

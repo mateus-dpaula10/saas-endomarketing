@@ -29,7 +29,7 @@
                     <a href="{{ route('diagnostico.index') }}"><i class="fa-solid fa-arrow-left me-2"></i>Voltar</a>
                 </div>
 
-                <form action="{{ route('diagnostico.update', $diagnostic->id) }}" method="post">
+                <form action="{{ route('diagnostico.update', $diagnostic->id) }}" method="POST">
                     @csrf
                     @method('PATCH')
                     
@@ -57,7 +57,7 @@
                     </div>
 
                     <div class="form-group mt-4">
-                        <label class="form-label'">Perguntas</label>
+                        <label class="form-label">Perguntas</label>
                         <div id="questions-wrapper">
                             @foreach ($diagnostic->questions as $index => $question)
                                 <div class="question-block mb-3 border rounded p-3 position-relative" data-index="{{ $index }}">
