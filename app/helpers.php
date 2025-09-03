@@ -3,74 +3,120 @@
 use Illuminate\Support\Str;
 
 if (!function_exists('planoAcao')) {
-    function planoAcao($nota)
+    function planoAcao(float $nota): string
     {
         return match (true) {
             $nota <= 2 => '⚠️ Ação imediata necessária: há sérias deficiências nos processos, comunicação ou cultura organizacional. Realizar diagnóstico aprofundado e implementar mudanças estruturais com urgência.',
-            
             $nota == 3 => '🔧 Ação de melhoria contínua: a organização apresenta desempenho razoável, mas com falhas pontuais. Reforçar boas práticas existentes e corrigir os pontos críticos identificados.',
-            
             $nota >= 4 => '✅ Manter e evoluir: os resultados indicam um bom desempenho. Continuar monitorando, promovendo melhorias constantes e buscando inovação para atingir níveis de excelência.',
-            
             default => '❓ Plano de ação indisponível: nota inválida ou fora dos parâmetros esperados.',
         };
     }
 }
 
 if (!function_exists('planoAcaoCategoria')) {
-    function planoAcaoCategoria($categoria, $nota)
+    function planoAcaoCategoria(string $categoria, float $nota, string $tipo = 'cultura'): string
     {
-        $nomesCategorias = [
-            'comu_inte' => 'Comunicação interna',
-            'reco_valo' => 'Reconhecimento e Valorização',
-            'clim_orga' => 'Clima Organizacional',
-            'cult_orga' => 'Cultura Organizacional',
-            'dese_capa' => 'Desenvolvimento e Capacitação',
-            'lide_gest' => 'Liderança e Gestão',
-            'qual_vida_trab' => 'Qualidade de Vida no Trabalho',
-            'pert_enga' => 'Pertencimento e Engajamento',
+        $mensagensCultura = [
+            'identidade_proposito' => [
+                'baixo' => '⚠️ Identidade e propósito fracos. Reforçar missão, visão e valores.',
+                'medio' => '🔧 Identidade e propósito medianos. Promover comunicação interna mais clara.',
+                'alto'  => '✅ Identidade e propósito claros. Manter alinhamento cultural.'
+            ],
+            'valores_comportamentos' => [
+                'baixo' => '⚠️ Comportamentos desalinhados. Reforçar valores e padrões.',
+                'medio' => '🔧 Comportamentos razoáveis. Ajustar práticas e feedbacks.',
+                'alto'  => '✅ Comportamentos alinhados. Continuar incentivando boas práticas.'
+            ],
+            'ambiente_clima' => [
+                'baixo' => '⚠️ Clima organizacional ruim. Avaliar satisfação e engajamento.',
+                'medio' => '🔧 Clima razoável. Implementar ações de integração.',
+                'alto'  => '✅ Clima saudável. Manter boas práticas de ambiente e cultura.'
+            ],
+            'comunicacao_lideranca' => [
+                'baixo' => '⚠️ Comunicação e liderança deficitárias. Reforçar canais e escuta.',
+                'medio' => '🔧 Comunicação razoável. Melhorar feedback e diálogo.',
+                'alto'  => '✅ Comunicação eficaz. Manter práticas e liderança engajada.'
+            ],
+            'processos_praticas' => [
+                'baixo' => '⚠️ Processos desalinhados. Revisar procedimentos e tomadas de decisão.',
+                'medio' => '🔧 Processos razoáveis. Corrigir pontos críticos.',
+                'alto'  => '✅ Processos consistentes. Continuar evoluindo.'
+            ],
+            'reconhecimento_celebracao' => [
+                'baixo' => '⚠️ Reconhecimento insuficiente. Criar programas estruturados.',
+                'medio' => '🔧 Reconhecimento razoável. Melhorar consistência.',
+                'alto'  => '✅ Reconhecimento efetivo. Manter e expandir.'
+            ],
+            'diversidade_pertencimento' => [
+                'baixo' => '⚠️ Diversidade e pertencimento fracos. Reforçar inclusão.',
+                'medio' => '🔧 Diversidade moderada. Ajustar práticas e comunicação.',
+                'alto'  => '✅ Diversidade e pertencimento fortes. Continuar promovendo.'
+            ],
+            'aspiracoes_futuro' => [
+                'baixo' => '⚠️ Metas futuras pouco claras. Definir objetivos e comunicação.',
+                'medio' => '🔧 Metas razoáveis. Melhorar engajamento e clareza.',
+                'alto'  => '✅ Metas bem definidas. Manter acompanhamento e motivação.'
+            ],
         ];
 
-        $mensagens = [
-            'baixo' => [
-                'comu_inte' => '⚠️ Comunicação interna falha. É necessário rever canais e processos de comunicação.',
-                'reco_valo' => '⚠️ Reconhecimento insuficiente. Implementar programas de valorização do colaborador.',
-                'clim_orga' => '⚠️ Clima organizacional crítico. Avaliar conflitos, cultura e ambiente.',
-                'cult_orga' => '⚠️ Cultura desalinhada. Iniciar processo de alinhamento cultural.',
-                'dese_capa' => '⚠️ Desenvolvimento negligenciado. Criar plano de capacitação estruturado.',
-                'lide_gest' => '⚠️ Problemas de liderança. Avaliar e capacitar gestores.',
-                'qual_vida_trab' => '⚠️ Baixa qualidade de vida no trabalho. Rever carga e ambiente.',
-                'pert_enga' => '⚠️ Falta de pertencimento. Fortalecer engajamento e propósito.'
+        $mensagensComunicacao = [
+            'contratar' => [
+                'baixo' => '⚠️ Integração e onboarding insuficientes. Revisar processos.',
+                'medio' => '🔧 Integração adequada. Melhorar comunicação de informações essenciais.',
+                'alto'  => '✅ Integração eficaz. Continuar promovendo boas práticas.'
             ],
-            'medio' => [
-                'comu_inte' => '🔧 Comunicação interna razoável. Otimizar canais e feedbacks.',
-                'reco_valo' => '🔧 Reconhecimento presente, mas inconsistente. Melhorar regularidade.',
-                'clim_orga' => '🔧 Clima organizacional mediano. Realizar ações de integração.',
-                'cult_orga' => '🔧 Cultura em desenvolvimento. Reforçar valores e missão.',
-                'dese_capa' => '🔧 Capacitação moderada. Avaliar aderência às necessidades reais.',
-                'lide_gest' => '🔧 Liderança operante. Trabalhar escuta ativa e clareza.',
-                'qual_vida_trab' => '🔧 Qualidade de vida ok. Buscar mais equilíbrio e apoio.',
-                'pert_enga' => '🔧 Engajamento parcial. Estimular mais participação e propósito.'
+            'celebrar' => [
+                'baixo' => '⚠️ Reconhecimento de conquistas falho. Implementar celebrações estruturadas.',
+                'medio' => '🔧 Reconhecimento razoável. Ajustar frequência e consistência.',
+                'alto'  => '✅ Reconhecimento efetivo. Continuar valorizando conquistas.'
             ],
-            'alto' => [
-                'comu_inte' => '✅ Comunicação bem estabelecida. Manter boas práticas.',
-                'reco_valo' => '✅ Reconhecimento efetivo. Continuar e expandir.',
-                'clim_orga' => '✅ Clima saudável. Manter escuta ativa e feedbacks.',
-                'cult_orga' => '✅ Cultura forte. Reforçar e difundir constantemente.',
-                'dese_capa' => '✅ Desenvolvimento consistente. Ampliar trilhas de carreira.',
-                'lide_gest' => '✅ Liderança bem avaliada. Estimular mentoria e inovação.',
-                'qual_vida_trab' => '✅ Alta qualidade de vida no trabalho. Manter equilíbrio e benefícios.',
-                'pert_enga' => '✅ Engajamento forte. Investir em protagonismo e colaboração.'
+            'compartilhar' => [
+                'baixo' => '⚠️ Compartilhamento de informações insuficiente. Melhorar fluxos internos.',
+                'medio' => '🔧 Compartilhamento razoável. Ajustar processos e comunicação.',
+                'alto'  => '✅ Compartilhamento eficaz. Manter boas práticas.'
             ],
+            'inspirar' => [
+                'baixo' => '⚠️ Liderança pouco inspiradora. Trabalhar motivação e engajamento.',
+                'medio' => '🔧 Liderança razoável. Melhorar comunicação e inspiração.',
+                'alto'  => '✅ Liderança inspiradora. Continuar promovendo engajamento.'
+            ],
+            'falar' => [
+                'baixo' => '⚠️ Comunicação aberta limitada. Criar canais seguros.',
+                'medio' => '🔧 Comunicação moderada. Incentivar diálogo e feedback.',
+                'alto'  => '✅ Comunicação aberta e eficaz. Continuar promovendo transparência.'
+            ],
+            'escutar' => [
+                'baixo' => '⚠️ Liderança pouco receptiva. Melhorar escuta ativa.',
+                'medio' => '🔧 Escuta adequada. Ajustar feedback e atenção às sugestões.',
+                'alto'  => '✅ Escuta eficaz. Continuar promovendo atenção à equipe.'
+            ],
+            'cuidar' => [
+                'baixo' => '⚠️ Pouco cuidado percebido. Implementar ações de atenção às pessoas.',
+                'medio' => '🔧 Cuidado moderado. Reforçar políticas de bem-estar.',
+                'alto'  => '✅ Cuidado percebido. Continuar promovendo práticas de atenção e valorização.'
+            ],
+            'desenvolver' => [
+                'baixo' => '⚠️ Desenvolvimento limitado. Criar oportunidades claras de crescimento.',
+                'medio' => '🔧 Desenvolvimento adequado. Ajustar programas de capacitação.',
+                'alto'  => '✅ Desenvolvimento eficaz. Continuar promovendo evolução profissional.'
+            ],
+            'agradecer' => [
+                'baixo' => '⚠️ Agradecimentos pouco percebidos. Incentivar reconhecimento regular.',
+                'medio' => '🔧 Agradecimentos razoáveis. Melhorar frequência e sinceridade.',
+                'alto'  => '✅ Agradecimentos claros e valorizados. Continuar promovendo cultura de reconhecimento.'
+            ]
         ];
 
         $faixa = match (true) {
             $nota <= 2 => 'baixo',
             $nota == 3 => 'medio',
             $nota >= 4 => 'alto',
-            default => 'default',
+            default    => 'baixo',
         };
 
-        return $mensagens[$faixa][$categoria] ?? '❓ Plano de ação não disponível para esta categoria.';
+        $mensagens = $tipo === 'cultura' ? $mensagensCultura : $mensagensComunicacao;
+
+        return $mensagens[$categoria][$faixa] ?? '❓ Plano de ação não disponível para esta categoria.';
     }
 }

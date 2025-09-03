@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->tinyInteger('note')->nullable();
             $table->text('text')->nullable();
+            $table->float('score')->nullable(); 
+            $table->json('sentiment')->nullable();
+            $table->boolean('analyzed')->default(false);
             $table->foreignId('diagnostic_id')->constrained()->onDelete('cascade');
             $table->foreignId('question_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');

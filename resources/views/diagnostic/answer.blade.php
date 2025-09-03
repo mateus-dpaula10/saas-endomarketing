@@ -62,8 +62,7 @@
                                             class="form-control mt-2" 
                                             rows="5" 
                                             placeholder="Escreva sua resposta" 
-                                            required
-                                        ></textarea>
+                                            required></textarea>
                                     @endif
                                 </div>
                             @endforeach

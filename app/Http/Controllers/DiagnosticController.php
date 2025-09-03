@@ -13,67 +13,93 @@ use App\Models\Campaign;
 use App\Models\Plain;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Services\OpenAIService;
 
 class DiagnosticController extends Controller
 {
-    public function index() {
+    public function index(OpenAIService $openAIService) {
         $authUser = auth()->user();
 
+        $categoriaFormatada = [
+            'identidade_proposito'      => 'Identidade e propósito',
+            'valores_comportamentos'    => 'Valores e comportamentos',
+            'ambiente_clima'            => 'Ambiente e clima',
+            'comunicacao_lideranca'     => 'Comunicação e liderança',
+            'processos_praticas'        => 'Processos e práticas',
+            'reconhecimento_celebracao' => 'Reconhecimento e celebração',
+            'diversidade_pertencimento' => 'Diversidade e pertencimento',
+            'aspiracoes_futuro'         => 'Aspirações futuras',
+            'contratar'                 => 'Contratação',
+            'celebrar'                  => 'Celebração',
+            'compartilhar'              => 'Compartilhar informações',
+            'inspirar'                  => 'Inspiração da liderança',
+            'falar'                     => 'Falar abertamente',
+            'escutar'                   => 'Escuta da liderança',
+            'cuidar'                    => 'Cuidado com pessoas',
+            'desenvolver'               => 'Desenvolvimento',
+            'agradecer'                 => 'Agradecimento'
+        ];
+
         $diagnostics = Diagnostic::with(['questions.options', 'campaigns', 'plain'])->get();
+        
+        $diagnosticsFiltered = $diagnostics->filter(function ($diagnostic) use ($authUser) {
+            return $authUser->role === 'superadmin' || $diagnostic->plain_id === ($authUser->tenant->plain_id ?? null);
+        })->map(function ($diagnostic) use ($authUser, $openAIService) {
+            $answersGrouped = $diagnostic->questions->map(function ($question) use ($diagnostic, $authUser, $openAIService) {
+                $answers = Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('question_id', $question->id)
+                    ->where('tenant_id', $authUser->tenant_id)
+                    ->get();
 
-        if ($authUser->role === 'superadmin') {
-            $diagnosticsFiltered = $diagnostics->map(function ($diagnostic) use ($authUser) {
-                return [
-                    'diagnostic'   => $diagnostic,
-                    'hasAnswered'  => false,
-                    'hasQuestions' => $diagnostic->questions->isNotEmpty()
-                ];
-            });
-        } else {
-            $tenantPlainId = $authUser->tenant->plain_id ??null;
-            
-            $diagnosticsFiltered = $diagnostics->filter(function ($diagnostic) use ($tenantPlainId) {
-                return $diagnostic->plain_id === $tenantPlainId;
-            })->map(function ($diagnostic) use ($authUser) {
-                $hasAnswered = \App\Models\Answer::where('diagnostic_id', $diagnostic->id)
-                    ->where('user_id', $authUser->id)
-                    ->exists();
-
-                $answersGrouped = [];
-                
-                if ($authUser->role === 'admin') {
-                    $answersGrouped = $diagnostic->questions->map(function ($question) use ($diagnostic, $authUser) {
-                        $answers = Answer::where('diagnostic_id', $diagnostic->id)
-                            ->where('question_id', $question->id)
-                            ->where('tenant_id', $authUser->tenant_id)
-                            ->get();
-
-                        if ($question->type === 'fechada') {
-                            return [
-                                'question' => $question,
-                                'average'  => $answers->avg('note'),
-                                'answers'  => []
-                            ];
-                        }
-
-                        return [
-                            'question'     => $question,
-                            'average'      => null,
-                            'answers'      => $answers->pluck('text')
-                        ];
-                    });
+                if ($question->type === 'fechada') {
+                    return [
+                        'question'               => $question,
+                        'average'                => $answers->avg('note'),
+                        'answers'                => $answers->pluck('note')->toArray(),
+                        'average_open_sentiment' => null
+                    ];
                 }
 
+                $analyzed = [];
+                foreach ($answers as $ans) {
+                    if (!$ans->analyzed) {
+                        $score = $openAIService->gradeAnswer($question->text, $ans->text);
+                        $ans->score = $score;
+                        $ans->analyzed = true;
+                        $ans->save();
+                    } else {
+                        $score = $ans->score;
+                    }
+                    
+                    $analyzed[] = [
+                        'text' => trim($ans->text),
+                        'score' => $score
+                    ];
+                }
+                
+                $averageScore = collect($analyzed)->avg('score');
+
                 return [
-                    'diagnostic'     => $diagnostic,
-                    'hasAnswered'    => $hasAnswered,
-                    'hasQuestions'   => $diagnostic->questions->isNotEmpty(),
-                    'answersGrouped' => $answersGrouped
+                    'question'               => $question,
+                    'average'                => null,
+                    'answers'                => $analyzed,
+                    'average_open_sentiment' => $averageScore
                 ];
             });
-        }
 
-        return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered'));
+            $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
+                ->where('user_id', $authUser->id)
+                ->exists();
+
+            return [
+                'diagnostic'     => $diagnostic,
+                'hasAnswered'    => $hasAnswered,
+                'hasQuestions'   => $diagnostic->questions->isNotEmpty(),
+                'answersGrouped' => $answersGrouped
+            ];
+        });
+
+        return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered', 'categoriaFormatada'));
     }
 
     public function edit(Request $request, string $id)
@@ -276,6 +302,10 @@ class DiagnosticController extends Controller
             }
 
             if ($question->type === 'aberta' && isset($answer['text'])) {
+                $cleanText = trim($answer['text']);                       
+                $cleanText = preg_replace('/[ \t]+/', ' ', $cleanText);   
+                $cleanText = preg_replace("/\n{3,}/", "\n\n", $cleanText);
+
                 Answer::updateOrCreate(
                     [
                         'diagnostic_id' => $diagnostic->id,
@@ -285,7 +315,7 @@ class DiagnosticController extends Controller
                     ],
                     [
                         'note'          => null,
-                        'text'          => $answer['text']
+                        'text'          => $cleanText
                     ]
                 );
             }

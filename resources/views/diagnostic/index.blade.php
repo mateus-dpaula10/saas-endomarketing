@@ -42,7 +42,7 @@
                         <tbody>
                             @foreach ($diagnosticsFiltered as $data)
                                 @php
-                                    $diagnostic  = $data['diagnostic'];
+                                    $diagnostic   = $data['diagnostic'];
                                     $hasAnswered  = $data['hasAnswered'];
                                     $hasQuestions = $data['hasQuestions'];
                                 @endphp
@@ -54,17 +54,21 @@
                                     <td>{{ $diagnostic->plain->name ?? '-' }}</td>
                                     <td>      
                                         @if (in_array($authUser->role, ['admin', 'user']))  
+                                            @if ($authUser->role === 'admin')
+                                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>                                                
+                                            @endif
+
                                             @if (!$hasAnswered && $hasQuestions)
-                                                <a href="{{ route('diagnostico.answer', $diagnostic) }}" class="btn btn-primary btn-sm">Responder</a>
+                                                <a href="{{ route('diagnostico.answer', $diagnostic) }}" class="btn btn-secondary btn-sm">Responder</a>
                                             @else
-                                                <button class="btn btn-warning btn-sm">Já respondeu</button>
+                                                <button class="btn btn-secondary btn-sm">Já respondeu</button>
                                             @endif                                          
                                         
                                             @if ($authUser->role === 'admin')
-                                                <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
+                                                <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                                                     Visualizar respostas
                                                 </button>
-                                            @endif
+                                            @endif                                            
                                         @elseif ($authUser->role === 'superadmin')
                                             <button class="btn btn-primary btn-sm mb-1" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>
                                             <a href="{{ route('diagnostico.edit', $diagnostic->id) }}" class="btn btn-warning btn-sm mb-1">Editar</a>
@@ -127,21 +131,75 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    @foreach ($data['answersGrouped'] as $group)
-                                                        <div class="mb-4">
-                                                            <label><strong>{{ $group['question']->text }}</strong></label>
+                                                    @php
+                                                        $categories = [];
+                                                        foreach ($data['answersGrouped'] as $q) {
+                                                            $cat = $q['question']->category;
+                                                            $score = $q['question']->type === 'aberta' ? $q['average_open_sentiment'] : $q['average'];
+                                                            if ($score !== null) {
+                                                                $categories[$cat][] = $score;
+                                                            }
+                                                        }
 
-                                                            @if ($group['question']->type === 'fechada')
-                                                                <p>Média das respostas: <strong>{{ number_format($group['average'], 2, ',', '.') }}</strong></p>
+                                                        $categoryAverages = [];
+                                                        foreach ($categories as $cat => $scores) {
+                                                            $categoryAverages[$cat] = count($scores) ? collect($scores)->avg() : 0;
+                                                        }
+
+                                                        $overallAverage = count($categoryAverages) ? collect($categoryAverages)->avg() : 0;
+                                                    @endphp
+
+                                                    @foreach ($data['answersGrouped'] as $q)
+                                                        <div class="mb-4">
+                                                            <label class="py-1 d-flex align-items-center gap-3">
+                                                                <strong>{{ $q['question']->text }}</strong>
+                                                                <small class="text-muted">
+                                                                    <span class="badge bg-secondary">
+                                                                        {{ $categoriaFormatada[$q['question']->category] ?? ucfirst(str_replace('_', ' ', $q['question']->category)) }}
+                                                                    </span>
+                                                                </small>
+                                                            </label>
+
+                                                            @if ($q['question']->type === 'fechada')
+                                                                <p>Média das respostas: <strong>{{ number_format($q['average'], 2, ',', '.') }}</strong></p>
                                                             @else
-                                                                @forelse ($group['answers'] as $answer)
-                                                                    <textarea class="form-control mb-1 auto-resize" disabled>{{ $answer }}</textarea>
-                                                                @empty
-                                                                    <textarea class="form-control mb-1 auto-resize" disabled>Nenhuma resposta registrada</textarea>
-                                                                @endforelse
+                                                                @foreach ($q['answers'] as $answer)
+                                                                    <div class="p-2 mb-1 border rounded bg-light" style="white-space: pre-wrap">
+                                                                        {{ trim($answer['text']) }} 
+                                                                        {{-- Nota: {{ number_format($answer['score'], 2, ',', '.') }} --}}
+                                                                    </div>
+                                                                @endforeach
+                                                                <p>Média das respostas: <strong>{{ number_format($q['average_open_sentiment'], 2, ',', '.') }}</strong></p>
                                                             @endif
                                                         </div>
                                                     @endforeach
+
+                                                    @if(count($categoryAverages))
+                                                        <hr>
+                                                        <div class="alert alert-secondary">
+                                                            <h5 class="mb-2">Média por categoria:</h5>
+                                                            @foreach ($categoryAverages as $cat => $avg)
+                                                                @php
+                                                                    $tipo = $data['answersGrouped']
+                                                                        ->firstWhere('question.category', $cat)['question']->diagnostic_type ?? 'cultura';
+                                                                @endphp
+                                                                <p>
+                                                                    <strong>{{ $categoriaFormatada[$cat] }}:</strong>
+                                                                    {{ number_format($avg, 2, ',', '.') }} 
+                                                                    - {{ planoAcaoCategoria($cat, round($avg), $tipo) }}
+                                                                </p>
+                                                            @endforeach
+                                                        </div>
+
+                                                        <hr>
+                                                        <div class="alert alert-info">
+                                                            <h5 class="mb-2">Média geral:</h5>
+                                                            <p>
+                                                                <strong>{{ number_format($overallAverage, 2, ',', '.') }}</strong>
+                                                                - {{ planoAcao(round($overallAverage)) }}
+                                                            </p>
+                                                        </div>
+                                                    @endif
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -158,14 +216,3 @@
         </div>
     </div>
 @endsection
-
-@push('scripts')
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            document.querySelectorAll("textarea.auto-resize").forEach(function (el) {
-                el.style.height = "auto"; 
-                el.style.height = el.scrollHeight + "px"; 
-            });
-        });
-    </script>
-@endpush
