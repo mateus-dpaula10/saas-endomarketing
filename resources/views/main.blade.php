@@ -76,8 +76,8 @@
                     <div>
                         <h5>Empresa</h5>
                         <ul>
-                            <li><a target="_blank" href="https://dev.hiatocomunica.com.br/hiato/#porqueahiato">Sobre</a></li>
-                            <li><a target="_blank" href="https://dev.hiatocomunica.com.br/hiato/vem-pra-ca">Contato</a></li>
+                            <li><a target="_blank" href="https://hiatocomunica.com.br/#porqueahiato/">Sobre</a></li>
+                            <li><a target="_blank" href="https://hiatocomunica.com.br/vem-pra-ca/">Contato</a></li>
                         </ul>
                     </div>
                     <div>
@@ -102,7 +102,7 @@
 
                 <div class="col-12 mt-5">
                     <p class="text-center mb-0">Copyright &copy; <?php echo date('Y')?> - Desenvolvido por 
-                        <a class="text-white" target="_blank" href="https://dev.hiatocomunica.com.br/hiato">Hiato Comunicação</a>
+                        <a class="text-white" target="_blank" href="https://hiatocomunica.com.br/hiato">Hiato Comunicação</a>
                     </p>
                 </div>
             </div>

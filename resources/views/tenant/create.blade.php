@@ -6,6 +6,16 @@
     <div class="container-fluid empresa" id="create">
         <div class="row">
             <div class="col-12 py-5">
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
                 <div class="header">
                     <h4>Adicionar empresa</h4>
                     <a href="{{ route('empresa.index') }}"><i class="fa-solid fa-arrow-left me-2"></i>Voltar</a>

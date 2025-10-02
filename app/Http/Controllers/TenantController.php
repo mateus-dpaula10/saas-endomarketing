@@ -7,6 +7,7 @@ use App\Models\Tenant;
 use App\Models\Plain;
 use App\Models\Diagnostic;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class TenantController extends Controller
 {
@@ -41,10 +42,10 @@ class TenantController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'nome'                    => 'required|string|max:255|unique:tenants,nome',
             'plain_id'                => 'required|exists:plains,id',
-            'cnpj'                    => 'required|string|size:14',
+            'cnpj'                    => 'required|string|size:14|unique:tenants,cnpj',
             'social_reason'           => 'nullable|string|max:255',
             'fantasy_name'            => 'nullable|string|max:255',
             'address'                 => 'nullable|string|max:255',
@@ -60,6 +61,7 @@ class TenantController extends Controller
             'plain_id.exists'         => 'O plano selecionado não é válido.',
             'cnpj.required'           => 'O campo CNPJ é obrigatório.',
             'cnpj.size'               => 'O CNPJ deve ter exatamente 14 caracteres numéricos.',
+            'cnpj.unique'             => 'Já existe uma empresa cadastrada com esse CNPJ.',
             'social_reason.max'       => 'A razão social deve ter no máximo 255 caracteres.',
             'fantasy_name.max'        => 'O nome fantasia deve ter no máximo 255 caracteres.',
             'address.max'             => 'O endereço deve ter no máximo 255 caracteres.',
@@ -72,6 +74,11 @@ class TenantController extends Controller
             'active_tenant.boolean'   => 'O campo ativo deve ser verdadeiro ou falso.'
         ]); 
 
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
         $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
 
         $tenant = Tenant::create($validated);
@@ -166,10 +173,10 @@ class TenantController extends Controller
     {
         $empresa = Tenant::findOrFail($id);
 
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'nome'                    => 'required|string|max:255|unique:tenants,nome,' . $empresa->id,
             'plain_id'                => 'required|exists:plains,id',
-            'cnpj'                    => 'required|string|size:14',
+            'cnpj'                    => 'required|string|size:14|unique:tenants,cnpj,' . $empresa->id,
             'social_reason'           => 'nullable|string|max:255',
             'fantasy_name'            => 'nullable|string|max:255',
             'address'                 => 'nullable|string|max:255',
@@ -185,6 +192,7 @@ class TenantController extends Controller
             'plain_id.exists'         => 'O plano selecionado não é válido.',
             'cnpj.required'           => 'O campo CNPJ é obrigatório.',
             'cnpj.size'               => 'O CNPJ deve ter exatamente 14 caracteres numéricos.',
+            'cnpj.unique'             => 'Já existe uma empresa cadastrada com esse CNPJ.',            
             'social_reason.max'       => 'A razão social deve ter no máximo 255 caracteres.',
             'fantasy_name.max'        => 'O nome fantasia deve ter no máximo 255 caracteres.',
             'address.max'             => 'O endereço deve ter no máximo 255 caracteres.',
@@ -196,6 +204,12 @@ class TenantController extends Controller
             'active_tenant.required'  => 'É obrigatório informar se a empresa está ativa.',
             'active_tenant.boolean'   => 'O campo ativo deve ser verdadeiro ou falso.'
         ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
 
         $validated['cnpj'] = preg_replace('/\D/', '', $validated['cnpj']);
         $validated['cep'] = isset($validated['cep']) ? preg_replace('/\D/', '', $validated['cep']) : null;
