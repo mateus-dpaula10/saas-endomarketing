@@ -131,24 +131,6 @@
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                                 </div>
                                                 <div class="modal-body">
-                                                    @php
-                                                        $categories = [];
-                                                        foreach ($data['answersGrouped'] as $q) {
-                                                            $cat = $q['question']->category;
-                                                            $score = $q['question']->type === 'aberta' ? $q['average_open_sentiment'] : $q['average'];
-                                                            if ($score !== null) {
-                                                                $categories[$cat][] = $score;
-                                                            }
-                                                        }
-
-                                                        $categoryAverages = [];
-                                                        foreach ($categories as $cat => $scores) {
-                                                            $categoryAverages[$cat] = count($scores) ? collect($scores)->avg() : 0;
-                                                        }
-
-                                                        $overallAverage = count($categoryAverages) ? collect($categoryAverages)->avg() : 0;
-                                                    @endphp
-
                                                     @foreach ($data['answersGrouped'] as $q)
                                                         <div class="mb-4">
                                                             <label class="py-1 d-flex align-items-center gap-3">
@@ -166,7 +148,6 @@
                                                                 @foreach ($q['answers'] as $answer)
                                                                     <div class="p-2 mb-1 border rounded bg-light" style="white-space: pre-wrap">
                                                                         {{ trim($answer['text']) }} 
-                                                                        {{-- Nota: {{ number_format($answer['score'], 2, ',', '.') }} --}}
                                                                     </div>
                                                                 @endforeach
                                                                 <p>Média das respostas: <strong>{{ number_format($q['average_open_sentiment'], 2, ',', '.') }}</strong></p>
@@ -174,30 +155,29 @@
                                                         </div>
                                                     @endforeach
 
-                                                    @if(count($categoryAverages))
+                                                    @if(!empty($data['categoryAverages']))
                                                         <hr>
                                                         <div class="alert alert-secondary">
                                                             <h5 class="mb-2">Média por categoria:</h5>
-                                                            @foreach ($categoryAverages as $cat => $avg)
-                                                                @php
-                                                                    $tipo = $data['answersGrouped']
-                                                                        ->firstWhere('question.category', $cat)['question']->diagnostic_type ?? 'cultura';
-                                                                @endphp
+                                                            @foreach ($data['categoryAverages'] as $cat => $avg)
                                                                 <p>
-                                                                    <strong>{{ $categoriaFormatada[$cat] }}:</strong>
+                                                                    <strong>{{ $categoriaFormatada[$cat] ?? ucfirst(str_replace('_', ' ', $cat)) }}:</strong>
                                                                     {{ number_format($avg, 2, ',', '.') }} 
-                                                                    - {{ planoAcaoCategoria($cat, round($avg), $tipo) }}
+                                                                    - {{ planoAcaoCategoria($cat, round($avg), 'cultura') }}
                                                                 </p>
                                                             @endforeach
                                                         </div>
 
                                                         <hr>
                                                         <div class="alert alert-info">
-                                                            <h5 class="mb-2">Média geral:</h5>
+                                                            <h5 class="mb-2">Média geral e saúde da empresa:</h5>
                                                             <p>
-                                                                <strong>{{ number_format($overallAverage, 2, ',', '.') }}</strong>
-                                                                - {{ planoAcao(round($overallAverage)) }}
+                                                                <strong>{{ number_format($data['overallAverage'], 2, ',', '.') }}</strong> (média geral)
                                                             </p>
+                                                            <p>
+                                                                <strong>{{ number_format(($data['overallAverage'] / 5) * 100, 2, ',', '.') }}%</strong> (índice de saúde)
+                                                            </p>
+                                                            <p>{{ planoAcao(round($data['overallAverage'])) }}</p>
                                                         </div>
                                                     @endif
                                                 </div>

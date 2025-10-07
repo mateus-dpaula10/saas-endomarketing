@@ -11,13 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('standard_campaigns', function (Blueprint $table) {
+        Schema::create('categories', function (Blueprint $table) {
             $table->id();
-            $table->string('category_code');
-            $table->float('trigger_max_score', 3, 1);
-            $table->string('text');
-            $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
+            $table->string('name');
             $table->timestamps();
         });
     }
@@ -27,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('standard_campaigns');
+        Schema::dropIfExists('categories');
     }
 };

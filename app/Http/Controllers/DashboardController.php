@@ -8,6 +8,7 @@ use App\Models\Answer;
 use App\Models\Question;
 use App\Models\Diagnostic;
 use App\Models\Campaign;
+use App\Models\User;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -17,7 +18,66 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        return view ('dashboard.index');
+        $authUser = auth()->user();
+
+        if ($authUser->role === 'superadmin') {
+            $diagnostics = Diagnostic::with(['questions.answers'])->get();
+        } else {
+            $tenantPlainId = $authUser->tenant->plain_id ?? null;
+            $diagnostics = Diagnostic::with(['questions.answers'])
+                ->where('plain_id', $tenantPlainId)
+                ->get();
+        }
+
+        $pendingDiagnostics = $diagnostics->filter(function ($diagnostic) use ($authUser) {
+            return !$diagnostic->questions
+                ->flatMap(fn($q) => $q->answers)
+                ->where('user_id', $authUser->id)
+                ->count();
+        });
+        $pendingCount = $pendingDiagnostics->count();
+
+        $allAnswers = $diagnostics->flatMap(function ($diagnostic) {
+            return $diagnostic->questions->flatMap(fn($q) => $q->answers);
+        });
+
+        $allScores = $allAnswers->map(function ($answer) {
+            return $answer->note ?? $answer->score ?? null;
+        })->filter(fn($score) => $score !== null);
+
+        $overallAverage = $allScores->count() ? $allScores->avg() : 0;
+        $healthIndex = round(($overallAverage / 5) * 100, 2);
+
+        $pendingUsers = collect();
+        if ($authUser->role === 'admin') {
+            $tenantId = $authUser->tenant_id;
+            $users = User::where('tenant_id', $tenantId)->get();
+
+            foreach ($users as $user) {
+                $userPendingDiagnostics = Diagnostic::where('plain_id', $tenantId)
+                    ->whereHas('questions') 
+                    ->whereDoesntHave('questions.answers', function ($query) use ($user) {
+                        $query->where('user_id', $user->id);
+                    })
+                    ->get();
+
+                if ($userPendingDiagnostics->isNotEmpty()) {
+                    $pendingUsers->push([
+                        'user' => $user,
+                        'pendingCount' => $userPendingDiagnostics->count(),
+                        'pendingDiagnostics' => $userPendingDiagnostics
+                    ]);
+                }
+            }
+        }
+
+        return view('dashboard.index', [
+            'authUser'           => $authUser,
+            'pendingDiagnostics' => $pendingDiagnostics,
+            'pendingCount'       => $pendingCount,
+            'healthIndex'        => $healthIndex,
+            'pendingUsers'       => $pendingUsers
+        ]);
     }
 
     /**

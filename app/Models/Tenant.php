@@ -44,4 +44,9 @@ class Tenant extends Model
     public function plain() {
         return $this->belongsTo(Plain::class);
     }
+
+    public function campaigns()
+    {
+        return $this->belongsToMany(Campaign::class, 'campaign_tenant');
+    }
 }

@@ -61,4 +61,16 @@ class User extends Authenticatable
     public function isAdmin() {
         return $this->role === 'admin';
     }
+
+    public function answeredDiagnostics()
+    {
+        return $this->hasManyThrough(
+            Diagnostic::class,
+            Answer::class,
+            'user_id',      
+            'id',           
+            'id',           
+            'diagnostic_id' 
+        );
+    }
 }

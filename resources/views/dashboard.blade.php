@@ -34,9 +34,7 @@
                 @endauth
                 @if(auth()->user()->role === 'superadmin')
                     <li><a href="{{ route('empresa.index') }}">Empresas</a></li>
-                @endif
-                @if(auth()->user()->role === 'admin')
-                    <li><a href="{{ route('administration.index') }}">Administrador</a></li>
+                    <li><a href="{{ route('campanha.index') }}">Campanhas</a></li>
                 @endif
                 <li>
                     <a href="#" onclick="event.preventDefault(); document.getElementById('form-logout').submit()">      

@@ -143,4 +143,10 @@ body main #barra-notificacao svg.bell-shake {
   display: flex;
   justify-content: space-between;
   margin-bottom: 3rem;
+}
+
+.campanha .header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3rem;
 }/*# sourceMappingURL=style.css.map */

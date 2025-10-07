@@ -43,19 +43,28 @@ class DiagnosticController extends Controller
         $diagnostics = Diagnostic::with(['questions.options', 'campaigns', 'plain'])->get();
         
         $diagnosticsFiltered = $diagnostics->filter(function ($diagnostic) use ($authUser) {
-            return $authUser->role === 'superadmin' || $diagnostic->plain_id === ($authUser->tenant->plain_id ?? null);
+            return $authUser->role === 'superadmin' 
+                || $diagnostic->plain_id === ($authUser->tenant->plain_id ?? null);
         })->map(function ($diagnostic) use ($authUser, $openAIService) {
-            $answersGrouped = $diagnostic->questions->map(function ($question) use ($diagnostic, $authUser, $openAIService) {
+
+            $categoryScores = []; 
+            $allScores = [];      
+
+            $answersGrouped = $diagnostic->questions->map(function ($question) use ($diagnostic, $authUser, $openAIService, &$categoryScores, &$allScores) {
                 $answers = Answer::where('diagnostic_id', $diagnostic->id)
                     ->where('question_id', $question->id)
                     ->where('tenant_id', $authUser->tenant_id)
                     ->get();
 
                 if ($question->type === 'fechada') {
+                    $avg = $answers->avg('note');
+                    $categoryScores[$question->category][] = $avg;
+                    $allScores[] = $avg;
+
                     return [
-                        'question'               => $question,
-                        'average'                => $answers->avg('note'),
-                        'answers'                => $answers->pluck('note')->toArray(),
+                        'question' => $question,
+                        'average' => $avg,
+                        'answers' => $answers->pluck('note')->toArray(),
                         'average_open_sentiment' => null
                     ];
                 }
@@ -70,34 +79,37 @@ class DiagnosticController extends Controller
                     } else {
                         $score = $ans->score;
                     }
-                    
-                    $analyzed[] = [
-                        'text' => trim($ans->text),
-                        'score' => $score
-                    ];
+                    $analyzed[] = ['text' => trim($ans->text), 'score' => $score];
                 }
-                
-                $averageScore = collect($analyzed)->avg('score');
+
+                $avgScore = collect($analyzed)->avg('score');
+
+                $categoryScores[$question->category][] = $avgScore;
+                $allScores[] = $avgScore;
 
                 return [
-                    'question'               => $question,
-                    'average'                => null,
-                    'answers'                => $analyzed,
-                    'average_open_sentiment' => $averageScore
+                    'question' => $question,
+                    'average' => null,
+                    'answers' => $analyzed,
+                    'average_open_sentiment' => $avgScore
                 ];
             });
 
-            $hasAnswered = Answer::where('diagnostic_id', $diagnostic->id)
-                ->where('user_id', $authUser->id)
-                ->exists();
+            $categoryAverages = collect($categoryScores)->map(fn($scores) => round(collect($scores)->avg(), 2));
+
+            $overallAverage = round(collect($allScores)->avg(), 2);
 
             return [
-                'diagnostic'     => $diagnostic,
-                'hasAnswered'    => $hasAnswered,
-                'hasQuestions'   => $diagnostic->questions->isNotEmpty(),
-                'answersGrouped' => $answersGrouped
+                'diagnostic' => $diagnostic,
+                'hasAnswered' => Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('user_id', $authUser->id)->exists(),
+                'hasQuestions' => $diagnostic->questions->isNotEmpty(),
+                'answersGrouped' => $answersGrouped,
+                'categoryAverages' => $categoryAverages,
+                'overallAverage' => $overallAverage
             ];
         });
+
 
         return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered', 'categoriaFormatada'));
     }
@@ -302,8 +314,12 @@ class DiagnosticController extends Controller
             }
 
             if ($question->type === 'aberta' && isset($answer['text'])) {
-                $cleanText = trim($answer['text']);                       
+                $cleanText = $answer['text'];  
+
+                $cleanText = preg_replace('/^\s+|\s+$/u', '', $cleanText);
+
                 $cleanText = preg_replace('/[ \t]+/', ' ', $cleanText);   
+                
                 $cleanText = preg_replace("/\n{3,}/", "\n\n", $cleanText);
 
                 Answer::updateOrCreate(

@@ -9,7 +9,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminNotificationController;
-use App\Http\Controllers\AdministrationController;
+use App\Http\Controllers\CampaignController;
 use Illuminate\Support\Facades\Http;
 
 // landing page
@@ -46,11 +46,7 @@ Route::middleware(['auth'])->group(function () {
         });
 
         Route::resource('/empresa', TenantController::class);
-    });
-    
-    // apenas admin
-    Route::middleware(['auth', 'role:admin'])->group(function () {
-        Route::get('/administracao', [AdministrationController::class, 'index'])->name('administration.index');
+        Route::resource('/campanha', CampaignController::class);
     });
     
     // superadmin e admin

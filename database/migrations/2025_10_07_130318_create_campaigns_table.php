@@ -13,16 +13,10 @@ return new class extends Migration
     {
         Schema::create('campaigns', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('tenant_id');
-            $table->string('text');
+            $table->string('title');
             $table->text('description')->nullable();
-            $table->date('start_date');
-            $table->date('end_date');
-            $table->boolean('is_auto')->default(false);
-            $table->boolean('is_manual')->default(false);  
-            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
-            $table->foreignId('standard_campaign_id')->nullable()->constrained();
-            $table->foreignId('diagnostic_id')->nullable()->constrained()->onDelete('cascade');
+            $table->boolean('active')->default(true);
+            $table->foreignId('category_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamps();
         });
     }
