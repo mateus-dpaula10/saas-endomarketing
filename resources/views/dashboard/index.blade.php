@@ -27,50 +27,61 @@
                     </div>                    
                 @endif
 
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            @if($authUser->role === 'superadmin')
-                                Saúde geral das empresas
-                            @else
-                                Saúde da empresa
-                            @endif
-                        </h5>
-                        <p class="card-text">
-                            Índice de saúde baseado nas respostas dos diagnósticos: <strong>{{ $healthIndex }}%</strong>
-                        </p>
-                        <div class="progress">
-                            <div 
-                                class="progress-bar" 
-                                role="progressbar" 
-                                style="width: {{ $healthIndex }}%;" 
-                                aria-valuenow="{{ $healthIndex }}" 
-                                aria-valuemin="0" 
-                                aria-valuemax="100"
-                            ></div>
-                        </div>
-                    </div>              
-                </div>
+                @if($authUser->role === 'superadmin')
+                    @foreach($companiesHealth as $company)
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ $company['tenant']->nome }}</h5>
+                                <p class="card-text">
+                                    Índice de saúde: <strong>{{ $company['healthIndex'] }}%</strong>
+                                </p>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ $company['healthIndex'] }}%;" aria-valuenow="{{ $company['healthIndex'] }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
 
-                @if($authUser->role === 'admin' && $pendingUsers->isNotEmpty())
+                                @if($company['pendingDiagnostics']->isNotEmpty())
+                                    <ul class="mt-2">
+                                        @foreach($company['pendingDiagnostics'] as $diag)
+                                            <li>{{ $diag->title ?? 'Sem título' }}</li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                @else
                     <div class="card mt-4">
                         <div class="card-body">
-                            <h5>Usuários com diagnósticos pendentes:</h5>
-                            <ul class="mb-0 mt-3">
-                                @foreach($pendingUsers as $user)
-                                    <li>
-                                        <strong>{{ $user['user']->name }}</strong> 
-                                        - {{ $user['pendingCount'] }} diagnóstico(s) pendente(s)
-                                        <ul class="mt-2">
-                                            @foreach($user['pendingDiagnostics'] as $diag)
-                                                <li>{{ $diag->title ?? 'Sem título' }}</li>
-                                            @endforeach
-                                        </ul>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
+                            <h5 class="card-title">Saúde da empresa</h5>
+                            <p class="card-text">
+                                Índice de saúde baseado nas respostas dos diagnósticos: <strong>{{ $healthIndex }}%</strong>
+                            </p>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" style="width: {{ $healthIndex }}%;" aria-valuenow="{{ $healthIndex }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>              
                     </div>
+
+                    @if($authUser->role === 'admin' && $pendingUsers->isNotEmpty())
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h5>Usuários com diagnósticos pendentes:</h5>
+                                <ul class="mb-0 mt-3">
+                                    @foreach($pendingUsers as $user)
+                                        <li>
+                                            <strong>{{ $user['user']->name }}</strong> 
+                                            - {{ $user['pendingCount'] }} diagnóstico(s) pendente(s)
+                                            <ul class="mt-2">
+                                                @foreach($user['pendingDiagnostics'] as $diag)
+                                                    <li>{{ $diag->title ?? 'Sem título' }}</li>
+                                                @endforeach
+                                            </ul>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>

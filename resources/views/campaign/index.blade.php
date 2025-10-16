@@ -66,13 +66,15 @@
                                             </div>
                                         @endforeach
                                     </td>
-                                    <td class="d-flex gap-1">
-                                        <a href="{{ route('campanha.edit', $campaign->id) }}" class="btn btn-warning btn-sm">Editar</a>
-                                        <form action="{{ route('campanha.destroy', $campaign->id) }}" method="POST">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                                        </form>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <a href="{{ route('campanha.edit', $campaign->id) }}" class="btn btn-warning btn-sm">Editar</a>
+                                            <form action="{{ route('campanha.destroy', $campaign->id) }}" method="POST">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                                            </form>                                        
+                                        </div>
                                     </td>
                                 </tr>
                             @empty

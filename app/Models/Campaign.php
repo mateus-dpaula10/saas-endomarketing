@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Campaign extends Model
 {
-    protected $fillable = ['tenant_id', 'category_id', 'title', 'description', 'active'];
+    protected $fillable = ['category_id', 'title', 'description', 'active'];
 
     public function tenants()
     {

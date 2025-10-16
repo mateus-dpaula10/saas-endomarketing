@@ -9,6 +9,7 @@ use App\Models\Question;
 use App\Models\Diagnostic;
 use App\Models\Campaign;
 use App\Models\User;
+use App\Models\Tenant;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -20,53 +21,78 @@ class DashboardController extends Controller
     {
         $authUser = auth()->user();
 
-        if ($authUser->role === 'superadmin') {
-            $diagnostics = Diagnostic::with(['questions.answers'])->get();
-        } else {
-            $tenantPlainId = $authUser->tenant->plain_id ?? null;
-            $diagnostics = Diagnostic::with(['questions.answers'])
-                ->where('plain_id', $tenantPlainId)
-                ->get();
-        }
-
-        $pendingDiagnostics = $diagnostics->filter(function ($diagnostic) use ($authUser) {
-            return !$diagnostic->questions
-                ->flatMap(fn($q) => $q->answers)
-                ->where('user_id', $authUser->id)
-                ->count();
-        });
-        $pendingCount = $pendingDiagnostics->count();
-
-        $allAnswers = $diagnostics->flatMap(function ($diagnostic) {
-            return $diagnostic->questions->flatMap(fn($q) => $q->answers);
-        });
-
-        $allScores = $allAnswers->map(function ($answer) {
-            return $answer->note ?? $answer->score ?? null;
-        })->filter(fn($score) => $score !== null);
-
-        $overallAverage = $allScores->count() ? $allScores->avg() : 0;
-        $healthIndex = round(($overallAverage / 5) * 100, 2);
-
+        $pendingDiagnostics = collect();
+        $pendingCount = 0;
         $pendingUsers = collect();
-        if ($authUser->role === 'admin') {
+        $healthIndex = 0;
+        $companiesHealth = collect();
+
+        if ($authUser->role === 'superadmin') {
+            $tenants = Tenant::with(['diagnostics.questions.answers'])->get();
+
+            $companiesHealth = $tenants->map(function ($tenant) {
+                $allAnswers = $tenant->diagnostics
+                    ->flatMap(fn($diag) => $diag->questions
+                        ->flatMap(fn($q) => $q->answers)
+                        ->where('tenant_id', $tenant->id)
+                    );
+                $allScores = $allAnswers->map(fn($ans) => $ans->note ?? $ans->score ?? null)->filter();
+
+                $overallAverage = $allScores->count() ? $allScores->avg() : 0;
+                $healthIndex = round(($overallAverage / 5) * 100, 2);
+
+                $pendingDiagnostics = $tenant->diagnostics->filter(function ($diag) use ($tenant) {
+                    return !$diag->questions
+                        ->flatMap(fn($q) => $q->answers)
+                        ->where('tenant_id', $tenant->id)
+                        ->count();
+                });
+
+                return [
+                    'tenant' => $tenant,
+                    'healthIndex' => $healthIndex,
+                    'pendingDiagnostics' => $pendingDiagnostics
+                ];
+            });
+        } else {
             $tenantId = $authUser->tenant_id;
-            $users = User::where('tenant_id', $tenantId)->get();
 
-            foreach ($users as $user) {
-                $userPendingDiagnostics = Diagnostic::where('plain_id', $tenantId)
-                    ->whereHas('questions') 
-                    ->whereDoesntHave('questions.answers', function ($query) use ($user) {
-                        $query->where('user_id', $user->id);
-                    })
-                    ->get();
+            $diagnostics = Diagnostic::with(['questions.answers'])
+                ->where('plain_id', $tenantId)
+                ->get();
 
-                if ($userPendingDiagnostics->isNotEmpty()) {
-                    $pendingUsers->push([
-                        'user' => $user,
-                        'pendingCount' => $userPendingDiagnostics->count(),
-                        'pendingDiagnostics' => $userPendingDiagnostics
-                    ]);
+            $allAnswers = $diagnostics
+                ->flatMap(fn($diag) => $diag->questions
+                    ->flatMap(fn($q) => $q->answers)
+                    ->where('tenant_id', $tenantId)
+                );
+
+            $allScores = $allAnswers->map(fn($ans) => $ans->note ?? $ans->score ?? null)
+                ->filter(fn($score) => $score !== null);
+
+            $overallAverage = $allScores->count() ? $allScores->avg() : 0;
+            $healthIndex = round(($overallAverage / 5) * 100, 2);
+
+            $pendingDiagnostics = $diagnostics->filter(fn($diag) =>
+                !$diag->questions->flatMap(fn($q) => $q->answers)->where('user_id', $authUser->id)->count()
+            );
+
+            $pendingCount = $pendingDiagnostics->count();
+
+            if ($authUser->role === 'admin') {
+                $users = User::where('tenant_id', $tenantId)->get();
+                foreach ($users as $user) {
+                    $userPending = $diagnostics->filter(fn($diag) =>
+                        !$diag->questions->flatMap(fn($q) => $q->answers)->where('user_id', $user->id)->count()
+                    );
+
+                    if ($userPending->isNotEmpty()) {
+                        $pendingUsers->push([
+                            'user' => $user,
+                            'pendingCount' => $userPending->count(),
+                            'pendingDiagnostics' => $userPending
+                        ]);
+                    }
                 }
             }
         }
@@ -75,8 +101,9 @@ class DashboardController extends Controller
             'authUser'           => $authUser,
             'pendingDiagnostics' => $pendingDiagnostics,
             'pendingCount'       => $pendingCount,
+            'pendingUsers'       => $pendingUsers,
             'healthIndex'        => $healthIndex,
-            'pendingUsers'       => $pendingUsers
+            'companiesHealth'    => $companiesHealth,
         ]);
     }
 
