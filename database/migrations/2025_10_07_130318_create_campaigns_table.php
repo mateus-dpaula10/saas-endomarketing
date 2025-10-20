@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->boolean('active')->default(true);
             $table->foreignId('category_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('diagnostic_id')->nullable()->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }

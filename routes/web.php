@@ -21,6 +21,12 @@ Route::get('/login', [AuthController::class, 'index'])->name('login.index');
 Route::post('/login', [AuthController::class, 'login'])->name('login.login');
 Route::post('/logout', [AuthController::class, 'logout'])->name('login.logout');
 
+Route::get('/consulta-cnpj/{cnpj}', function ($cnpj) {
+    $cnpj = preg_replace('/\D/', '', $cnpj);
+    $response = Http::get("https://www.receitaws.com.br/v1/cnpj/$cnpj");
+    return response()->json($response->json());
+});
+
 // todo usuario logado
 Route::middleware(['auth'])->group(function () {
     Route::resource('/dashboard', DashboardController::class);  
@@ -38,12 +44,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/diagnostico/{diagnostico}/edit', [DiagnosticController::class, 'edit'])->name('diagnostico.edit');
         Route::patch('/diagnostico/{diagnostico}', [DiagnosticController::class, 'update'])->name('diagnostico.update');
         Route::delete('/diagnostico/{diagnostico}', [DiagnosticController::class, 'destroy'])->name('diagnostico.destroy'); 
-
-        Route::get('/consulta-cnpj/{cnpj}', function ($cnpj) {
-            $cnpj = preg_replace('/\D/', '', $cnpj);
-            $response = Http::get("https://www.receitaws.com.br/v1/cnpj/$cnpj");
-            return response()->json($response->json());
-        });
 
         Route::resource('/empresa', TenantController::class);
         Route::resource('/campanha', CampaignController::class);
