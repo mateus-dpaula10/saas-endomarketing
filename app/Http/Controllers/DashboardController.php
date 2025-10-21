@@ -26,9 +26,10 @@ class DashboardController extends Controller
         $pendingUsers = collect();
         $healthIndex = 0;
         $companiesHealth = collect();
+        $campaigns = collect();
 
         if ($authUser->role === 'superadmin') {
-            $tenants = Tenant::with(['diagnostics.questions.answers'])->get();
+            $tenants = Tenant::with(['diagnostics.questions.answers', 'campaigns'])->get();
 
             $companiesHealth = $tenants->map(function ($tenant) {
                 $allAnswers = $tenant->diagnostics
@@ -37,7 +38,6 @@ class DashboardController extends Controller
                         ->where('tenant_id', $tenant->id)
                     );
                 $allScores = $allAnswers->map(fn($ans) => $ans->note ?? $ans->score ?? null)->filter();
-
                 $overallAverage = $allScores->count() ? $allScores->avg() : 0;
                 $healthIndex = round(($overallAverage / 5) * 100, 2);
 
@@ -54,11 +54,15 @@ class DashboardController extends Controller
                     'pendingDiagnostics' => $pendingDiagnostics
                 ];
             });
+
+            $campaigns = Campaign::with('tenants', 'contents')->get();
         } else {
             $tenantId = $authUser->tenant_id;
 
             $diagnostics = Diagnostic::with(['questions.answers'])
-                ->where('plain_id', $tenantId)
+                ->whereHas('tenants', function ($q) use ($tenantId) {
+                    $q->where('tenant_id', $tenantId);
+                })
                 ->get();
 
             $allAnswers = $diagnostics
@@ -95,6 +99,10 @@ class DashboardController extends Controller
                     }
                 }
             }
+
+            $campaigns = Campaign::with('contents')
+                ->whereHas('tenants', fn($q) => $q->where('tenant_id', $tenantId))
+                ->get();
         }
 
         return view('dashboard.index', [
@@ -104,6 +112,7 @@ class DashboardController extends Controller
             'pendingUsers'       => $pendingUsers,
             'healthIndex'        => $healthIndex,
             'companiesHealth'    => $companiesHealth,
+            'campaigns'          => $campaigns
         ]);
     }
 

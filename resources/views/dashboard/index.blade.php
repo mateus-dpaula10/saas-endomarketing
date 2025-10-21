@@ -8,25 +8,6 @@
             <div class="col-12 py-5">                
                 <h5 class="mb-0">Bem vindo '{{ $authUser->name }}'</h5>
 
-                @if (in_array($authUser->role, ['admin', 'user']))
-                    <div class="alert alert-info mt-4">
-                        @if ($pendingCount > 0)
-                            <h6>Você tem {{ $pendingCount }} diagnóstico(s) pendente(s) para responder.</h6>
-                            <ul class="mb-0 mt-3">
-                                @foreach ($pendingDiagnostics as $diagnostic)
-                                    <li>
-                                        <a href="{{ route('diagnostico.answer', $diagnostic->id) }}">
-                                            {{ $diagnostic->title ?? 'Diagnóstico sem título' }}
-                                        </a>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        @else
-                            Você não possui diagnóstico(s) pendente(s).
-                        @endif                    
-                    </div>                    
-                @endif
-
                 @if($authUser->role === 'superadmin')
                     @foreach($companiesHealth as $company)
                         <div class="card mt-4">
@@ -42,7 +23,7 @@
                                 @if($company['pendingDiagnostics']->isNotEmpty())
                                     <ul class="mt-2">
                                         @foreach($company['pendingDiagnostics'] as $diag)
-                                            <li>{{ $diag->title ?? 'Sem título' }}</li>
+                                            <li>Empresa com pendência de resposta do: {{ $diag->title ?? 'Sem título' }}</li>
                                         @endforeach
                                     </ul>
                                 @endif
@@ -50,6 +31,23 @@
                         </div>
                     @endforeach
                 @else
+                    <div class="alert alert-info mt-4">
+                        @if ($pendingCount > 0)
+                            <h6>Você tem {{ $pendingCount }} diagnóstico(s) pendente(s) para responder.</h6>
+                            <ul class="mb-0 mt-3">
+                                @foreach ($pendingDiagnostics as $diagnostic)
+                                    <li>
+                                        <a href="{{ route('diagnostico.answer', $diagnostic->id) }}">
+                                            {{ $diagnostic->title ?? 'Diagnóstico sem título' }}
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @else
+                            Você não possui diagnóstico(s) pendente(s).
+                        @endif                    
+                    </div>  
+
                     <div class="card mt-4">
                         <div class="card-body">
                             <h5 class="card-title">Saúde da empresa</h5>
@@ -82,6 +80,55 @@
                             </div>
                         </div>
                     @endif
+                @endif
+
+                @if($campaigns->isNotEmpty())
+                    <div class="card mt-4">
+                        <div class="card-body">
+                            <h5>Campanhas disponíveis</h5>
+
+                            @foreach($campaigns as $campaign)
+                                <div class="mt-3">
+                                    <h6 class="ms-1"><strong>{{ $campaign->title }} - {{ $campaign->category->name }}</strong></h6>
+                                    @if($campaign->contents->isNotEmpty())
+                                        <ul class="mt-2">
+                                            @php
+                                                $contentTypes = [
+                                                    'text'  => 'Texto',
+                                                    'link'  => 'Link',
+                                                    'image' => 'Imagem',
+                                                    'video' => 'Vídeo',
+                                                    'pdf'   => 'PDF'
+                                                ];
+                                            @endphp
+
+                                            @foreach($campaign->contents as $content)
+                                                <li>
+                                                    @switch($content->type)
+                                                        @case('text')
+                                                            {{ $content->content }}
+                                                            @break
+                                                        @case('link')
+                                                            <a href="{{ $content->content }}" target="_blank">{{ $content->content }}</a>
+                                                            @break
+                                                        @case('image')
+                                                        @case('video')
+                                                        @case('pdf')
+                                                            @if($content->file_path)
+                                                                <a href="{{ asset('storage/' . $content->file_path) }}" target="_blank">
+                                                                    {{ $contentTypes[$content->type] ?? ucfirst($content->type) }}
+                                                                </a>
+                                                            @endif
+                                                            @break
+                                                    @endswitch
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                 @endif
             </div>
         </div>
