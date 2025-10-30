@@ -40,13 +40,51 @@ class DiagnosticController extends Controller
             'agradecer'                 => 'Agradecimento'
         ];
 
+        $mapaQuadrantes = [
+            'identidade_proposito'      => 'Clã',
+            'valores_comportamentos'    => 'Clã',
+            'ambiente_clima'            => 'Clã',
+            'comunicacao_lideranca'     => 'Adhocracia',
+            'processos_praticas'        => 'Hierárquica',
+            'reconhecimento_celebracao' => 'Clã',
+            'diversidade_pertencimento' => 'Clã',
+            'aspiracoes_futuro'         => 'Adhocracia',
+            'contratar'                 => 'Mercado',
+            'celebrar'                  => 'Clã',
+            'compartilhar'              => 'Adhocracia',
+            'inspirar'                  => 'Adhocracia',
+            'falar'                     => 'Clã',
+            'escutar'                   => 'Clã',
+            'cuidar'                    => 'Clã',
+            'desenvolver'               => 'Clã',
+            'agradecer'                 => 'Clã',
+        ];
+
+        $culturaContexto = [
+            'Clã' => [
+                'ideal' => 'Engajamento, retenção e fortalecimento de equipes.',
+                'evitar' => 'Pode gerar lentidão e falta de cobrança clara.'
+            ],
+            'Adhocracia' => [
+                'ideal' => 'Inovação, adaptação rápida e crescimento em mercados ágeis.',
+                'evitar' => 'Risco de desorganização se não houver estrutura mínima.'
+            ],
+            'Hierárquica' => [
+                'ideal' => 'Escalar com controle, setores regulados e padronização.',
+                'evitar' => 'Pode engessar a cultura e reduzir autonomia e engajamento.'
+            ],
+            'Mercado' => [
+                'ideal' => 'Competição, foco em resultado e metas agressivas.',
+                'evitar' => 'Pode gerar clima tóxico e cultura baseada apenas em números.'
+            ]
+        ];
+
         $diagnostics = Diagnostic::with(['questions.options', 'campaigns', 'plain'])->get();
         
         $diagnosticsFiltered = $diagnostics->filter(function ($diagnostic) use ($authUser) {
             return $authUser->role === 'superadmin' 
                 || $diagnostic->plain_id === ($authUser->tenant->plain_id ?? null);
-        })->map(function ($diagnostic) use ($authUser, $openAIService) {
-
+        })->map(function ($diagnostic) use ($authUser, $openAIService, $mapaQuadrantes) {
             $categoryScores = []; 
             $allScores = [];      
 
@@ -58,8 +96,11 @@ class DiagnosticController extends Controller
 
                 if ($question->type === 'fechada') {
                     $avg = $answers->avg('note');
-                    $categoryScores[$question->category][] = $avg;
-                    $allScores[] = $avg;
+
+                    if (!is_null($avg)) {
+                        $categoryScores[$question->category][] = $avg;
+                        $allScores[] = $avg;                        
+                    }
 
                     return [
                         'question' => $question,
@@ -79,13 +120,18 @@ class DiagnosticController extends Controller
                     } else {
                         $score = $ans->score;
                     }
-                    $analyzed[] = ['text' => trim($ans->text), 'score' => $score];
+
+                    if (!is_null($score)) {
+                        $analyzed[] = ['text' => trim($ans->text), 'score' => $score];
+                    }
                 }
 
                 $avgScore = collect($analyzed)->avg('score');
 
-                $categoryScores[$question->category][] = $avgScore;
-                $allScores[] = $avgScore;
+                if (!is_null($avgScore)) {
+                    $categoryScores[$question->category][] = $avgScore;
+                    $allScores[] = $avgScore;
+                }
 
                 return [
                     'question' => $question,
@@ -95,9 +141,76 @@ class DiagnosticController extends Controller
                 ];
             });
 
-            $categoryAverages = collect($categoryScores)->map(fn($scores) => round(collect($scores)->avg(), 2));
-
+            $categoryAverages = collect($categoryScores)->map(fn($scores) => round(collect($scores)->avg(), 2))->filter();
             $overallAverage = round(collect($allScores)->avg(), 2);
+            
+            $culturaScoresGeral = [
+                'Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []
+            ];
+
+            foreach ($categoryAverages as $categoria => $media) {
+                $quadrante = $mapaQuadrantes[$categoria] ?? null;
+                if ($quadrante) {
+                    $culturaScoresGeral[$quadrante][] = $media;
+                }
+            }
+
+            $culturaAverages = collect($culturaScoresGeral)
+                ->map(fn($scores) => count($scores) ? round(collect($scores)->avg(), 2) : 0);
+
+            $userRoles = ['admin', 'colaborador'];
+            $culturaResultados = [];
+
+            foreach ($userRoles as $role) {
+                $respostasPorRole = Answer::where('diagnostic_id', $diagnostic->id)
+                    ->where('tenant_id', $authUser->tenant_id)
+                    ->whereHas('user', fn($q) => $q->where('role', $role))
+                    ->get()
+                    ->groupBy('question_id');
+
+                $pontuacoesPorCategoria = [];
+
+                foreach ($respostasPorRole as $questionId => $answers) {
+                    $question = $diagnostic->questions->firstWhere('id', $questionId);
+                    if (!$question) continue;
+
+                    $avg = $question->type === 'fechada'
+                        ? $answers->avg('note')
+                        : $answers->avg('score');
+
+                    if (!is_null($avg)) {
+                        $pontuacoesPorCategoria[$question->category][] = $avg;
+                    }
+                }
+
+                $mediasCategoria = collect($pontuacoesPorCategoria)
+                    ->map(fn($v) => round(collect($v)->avg(), 2))
+                    ->filter();
+
+                $culturaScores = [
+                    'Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []
+                ];
+
+                foreach ($mediasCategoria as $categoria => $media) {
+                    $quadrante = $mapaQuadrantes[$categoria] ?? null; 
+                    if ($quadrante) {
+                        $culturaScores[$quadrante][] = $media;
+                    }
+                }
+
+                $culturaMedias = collect($culturaScores)
+                    ->map(fn($scores) => count($scores) ? round(collect($scores)->avg(), 2) : 0);
+
+                $ordenadas = $culturaMedias->sortDesc();
+                $maisPresentes = $ordenadas->take(2);
+                $menosPresentes = $ordenadas->reverse()->take(2);
+
+                $culturaResultados[$role] = [
+                    'medias' => $culturaMedias,
+                    'predominantes' => $maisPresentes,
+                    'ausentes' => $menosPresentes
+                ];
+            }
 
             return [
                 'diagnostic' => $diagnostic,
@@ -106,12 +219,14 @@ class DiagnosticController extends Controller
                 'hasQuestions' => $diagnostic->questions->isNotEmpty(),
                 'answersGrouped' => $answersGrouped,
                 'categoryAverages' => $categoryAverages,
-                'overallAverage' => $overallAverage
+                'culturaAverages' => $culturaAverages, 
+                'overallAverage' => $overallAverage,
+                'analisePorRole' => $culturaResultados
             ];
         });
 
 
-        return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered', 'categoriaFormatada'));
+        return view ('diagnostic.index', compact('authUser', 'diagnosticsFiltered', 'categoriaFormatada', 'culturaContexto'));
     }
 
     public function edit(Request $request, string $id)
