@@ -53,4 +53,64 @@ class OpenAIService
             return 0;
         }
     }
+
+    public function analyzeQuadrantContext(array $openAnswers, array $quadrantScores): array
+    {
+        try {
+            $concatenated = implode("\n\n", array_map(function ($r) {
+                return "Pergunta: {$r['question']}\nResposta: {$r['answer']}";
+            }, $openAnswers));
+
+            $prompt = "
+                Você é um consultor de cultura organizacional.
+                A seguir estão respostas abertas de colaboradores e líderes.
+
+                Também informo a pontuação média (0 a 5) de cada tipo de cultura organizacional:
+
+                Clã: " . ($quadrantScores['clã'] ?? 'N/A') . "
+                Adhocracia: " . ($quadrantScores['adhocracia'] ?? 'N/A') . "
+                Hierárquica: " . ($quadrantScores['hierárquica'] ?? 'N/A') . "
+                Mercado: " . ($quadrantScores['mercado'] ?? 'N/A') . "
+
+                Analise o texto das respostas e gere um resumo analítico **para cada quadrante** contendo:
+                - **Aspectos positivos** observados nas respostas
+                - **Fragilidades ou desafios**
+                - Interpretação alinhada à pontuação média do quadrante (mais forte ou fraco)
+                - Tom neutro e consultivo
+
+                Respostas:
+                {$concatenated}
+
+                Retorne no formato:
+                Clã: [texto curto 2–4 linhas]
+                Adhocracia: [texto curto 2–4 linhas]
+                Hierárquica: [texto curto 2–4 linhas]
+                Mercado: [texto curto 2–4 linhas]
+            ";
+
+            $response = Http::withToken($this->apiKey)
+                ->post($this->apiUrl, [
+                    'model' => 'gpt-3.5-turbo',
+                    'messages' => [
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'temperature' => 0.7,
+                ]);
+
+            $text = trim($response->json()['choices'][0]['message']['content'] ?? '');
+
+            $analysis = [];
+            foreach (['Clã', 'Adhocracia', 'Hierárquica', 'Mercado'] as $quadrante) {
+                if (preg_match("/{$quadrante}:(.*?)(?=(Clã|Adhocracia|Hierárquica|Mercado|$))/s", $text, $matches)) {
+                    $analysis[strtolower($quadrante)] = trim($matches[1]);
+                }
+            }
+
+            return $analysis;
+
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
 }

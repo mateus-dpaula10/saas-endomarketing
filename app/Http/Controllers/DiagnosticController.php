@@ -66,22 +66,13 @@ class DiagnosticController extends Controller
     {
         return [
             'identidade_proposito'      => 'Clã',
-            'valores_comportamentos'    => 'Clã',
+            'valores_comportamentos'    => 'Mercado',
             'ambiente_clima'            => 'Clã',
+            'reconhecimento_celebracao' => 'Clã',
+            'diversidade_pertencimento' => 'Adhocracia',
             'comunicacao_lideranca'     => 'Adhocracia',
             'processos_praticas'        => 'Hierárquica',
-            'reconhecimento_celebracao' => 'Clã',
-            'diversidade_pertencimento' => 'Clã',
-            'aspiracoes_futuro'         => 'Adhocracia',
-            'contratar'                 => 'Mercado',
-            'celebrar'                  => 'Clã',
-            'compartilhar'              => 'Adhocracia',
-            'inspirar'                  => 'Adhocracia',
-            'falar'                     => 'Clã',
-            'escutar'                   => 'Clã',
-            'cuidar'                    => 'Clã',
-            'desenvolver'               => 'Clã',
-            'agradecer'                 => 'Clã',
+            'aspiracoes_futuro'         => 'Mercado'
         ];
     }
 
@@ -178,6 +169,7 @@ class DiagnosticController extends Controller
         $categoryAverages = collect($categoryScores)
             ->map(fn($scores) => round(collect($scores)->avg(), 2))
             ->filter();
+
         $overallAverage = round(collect($allScores)->avg(), 2);
         
         $culturaScoresGeral = [
@@ -205,14 +197,24 @@ class DiagnosticController extends Controller
                 ->groupBy('question_id');
 
             $pontuacoesPorCategoria = [];
+            $respostasAbertas = [];
 
             foreach ($respostasPorRole as $questionId => $answers) {
                 $question = $diagnostic->questions->firstWhere('id', $questionId);
                 if (!$question) continue;
 
-                $avg = $question->type === 'fechada'
-                    ? $answers->avg('note')
-                    : $answers->avg('score');
+                if ($question->type === 'fechada') {
+                    $avg = $answers->avg('note');
+                } else {
+                    $avg = $answers->avg('score');
+
+                    foreach ($answers as $ans) {
+                        $respostasAbertas[] = [
+                            'question' => $question->text,
+                            'answer' => $ans->text
+                        ];
+                    }
+                }
 
                 if (!is_null($avg)) {
                     $pontuacoesPorCategoria[$question->category][] = $avg;
@@ -220,42 +222,41 @@ class DiagnosticController extends Controller
             }
 
             $culturaScores = [
-                'Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []
+                'Clã' => [], 
+                'Adhocracia' => [], 
+                'Hierárquica' => [], 
+                'Mercado' => []
             ];
 
             foreach ($pontuacoesPorCategoria as $categoria => $medias) {
                 $quadrante = $mapaQuadrantes[$categoria] ?? null;
-
                 if ($quadrante) {
                     $culturaScores[$quadrante] = array_merge($culturaScores[$quadrante], $medias);
                 }
             }
 
             $culturaMedias = collect($culturaScores)
-                ->map(fn($scores) => count($scores) ? round(collect($scores)->avg(), 2) : 0);
+                ->map(fn($scores) => count($scores) ? round(collect($scores)->avg(), 2) : 0)
+                ->sortDesc();
 
+            $quadrantesOrdenados = array_keys($culturaMedias->toArray());
+            
             $quadranteClassificado = [
-                'predominante' => [],
-                'secundario'   => [],
-                'fraco'        => [],
-                'ausente'      => []
+                'predominante' => [$quadrantesOrdenados[0] ?? null],
+                'secundario'   => [$quadrantesOrdenados[1] ?? null],
+                'fraco'        => [$quadrantesOrdenados[2] ?? null],
+                'ausente'      => array_slice($quadrantesOrdenados, 3)
             ];
 
-            foreach ($culturaMedias as $quadrante => $media) {
-                if ($media >= 4) {
-                    $quadranteClassificado['predominante'][] = $quadrante;
-                } elseif ($media >= 3) {
-                    $quadranteClassificado['secundario'][] = $quadrante;
-                } elseif ($media > 0) {
-                    $quadranteClassificado['fraco'][] = $quadrante;
-                } else {
-                    $quadranteClassificado['ausente'][] = $quadrante;
-                }
+            $analiseTextual = [];
+            if (!empty($respostasAbertas)) {
+                $analiseTextual = $openAIService->analyzeQuadrantContext($respostasAbertas, $culturaMedias->toArray());
             }
 
             $culturaResultados[$role] = [
                 'medias' => $culturaMedias,
-                'classificacao' => $quadranteClassificado
+                'classificacao' => $quadranteClassificado,
+                'analise_textual' => $analiseTextual
             ];
         }
 

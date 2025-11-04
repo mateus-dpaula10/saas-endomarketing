@@ -173,6 +173,7 @@
                                                     <h5 class="modal-title">Resultado do Diagnóstico '{{ $diagnostic->title }}'</h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                                 </div>
+                                                
                                                 <div class="modal-body">
                                                     @php
                                                         $roles = ['admin' => 'Liderança / Gestão', 'user' => 'Colaboradores'];
@@ -183,7 +184,7 @@
                                                             $resultado = $data['analisePorRole'][$roleKey] ?? null;
                                                         @endphp
 
-                                                        <div class="mb-4">
+                                                        <div class="mb-5">
                                                             <h4 class="mb-3 text-center">📊 {{ $roleLabel }}</h4>
 
                                                             @if ($resultado)
@@ -192,23 +193,41 @@
                                                                         @php
                                                                             $quadrantes = $resultado['classificacao'][$status] ?? [];
                                                                             $badgeClass = match($status) {
-                                                                                'predominante' => 'bg-success',
-                                                                                'secundario'   => 'bg-warning',
-                                                                                'fraco'        => 'bg-danger',
-                                                                                'ausente'      => 'bg-secondary',
+                                                                                'predominante' => '#198754',
+                                                                                'secundario'   => '#D1E7DD',
+                                                                                'fraco'        => '#F8D7DA',
+                                                                                'ausente'      => '#DC3545',
                                                                                 default        => 'bg-light'
                                                                             };
+                                                                            $textColor = match($status) {
+                                                                                'secundario'   => '#0a3622',
+                                                                                'fraco'        => '#58151c', 
+                                                                                default        => '#FFF'
+                                                                            };
+
+                                                                            $descricao = match($status) {
+                                                                                'predominante' => 'Cultura predominante — representa o quadrante mais forte na organização.',
+                                                                                'secundario'   => 'Traços secundários — influenciam, mas não definem o perfil dominante.',
+                                                                                'fraco'        => 'Cultura fraca ou ausente — pouco presente nas práticas organizacionais.',
+                                                                                'ausente'      => 'Cultura ausente — praticamente inexistente no ambiente atual.',
+                                                                                default        => ''
+                                                                            }
                                                                         @endphp
 
                                                                         @foreach ($quadrantes as $quadrante)
                                                                             <div class="col">
-                                                                                <div class="card h-100 {{ $badgeClass }} text-white">
+                                                                                <div class="card h-100" style="background-color: {{ $badgeClass }}; color: {{ $textColor }}">
                                                                                     <div class="card-body">
-                                                                                        <h5 class="card-title">{{ $quadrante }}</h5>
-                                                                                        <p class="card-text">
+                                                                                        <h5 class="card-title">
+                                                                                            {{ $quadrante }}
+                                                                                        </h5>
+                                                                                        <p class="card-text mb-2">
+                                                                                            {{ $descricao }}
+                                                                                        </p>
+                                                                                        <p class="card-text mb-1">
                                                                                             Média: <strong>{{ $resultado['medias'][$quadrante] ?? 'N/A' }}</strong>
                                                                                         </p>
-                                                                                        <p class="card-text">
+                                                                                        <p class="card-text mb-1">
                                                                                             Ideal: {{ $culturaContexto[$quadrante]['ideal'] ?? 'N/A' }}
                                                                                         </p>
                                                                                         <p class="card-text">
