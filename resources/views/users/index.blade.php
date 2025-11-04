@@ -35,8 +35,8 @@
                                 @php
                                     $papel = match ($usuario->role) {
                                         'superadmin' => 'Administrador Mestre',
-                                        'admin' => 'Administrador',
-                                        'user' => 'Usuário'
+                                        'admin' => 'Liderança / Gestão',
+                                        'user' => 'Colaborador'
                                     }
                                 @endphp
 

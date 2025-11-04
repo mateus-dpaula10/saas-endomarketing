@@ -153,7 +153,7 @@
                                                                 </ul>
                                                             @else
                                                                 @foreach ($q['answers'] as $answer)
-                                                                    <textarea class="form-control" rows="10" readonly>{{ trim($answer['text']) }}</textarea>
+                                                                    <textarea class="form-control" rows="5" readonly>{{ trim($answer['text']) }}</textarea>
                                                                 @endforeach
                                                             @endif
                                                         </div>
@@ -182,12 +182,13 @@
                                                     @foreach ($roles as $roleKey => $roleLabel)
                                                         @php
                                                             $resultado = $data['analisePorRole'][$roleKey] ?? null;
+                                                            $resumoRole = $data['resumoPorRole'][$roleKey] ?? null;
                                                         @endphp
 
                                                         <div class="mb-5">
-                                                            <h4 class="mb-3 text-center">📊 {{ $roleLabel }}</h4>
+                                                            <h4 class="mb-3 text-center">📊 {{ $roleLabel }}</h4>                                                            
 
-                                                            @if ($resultado)
+                                                            @if ($resultado && !empty($resultado['classificacao']))
                                                                 <div class="row row-cols-1 row-cols-md-2 g-3">
                                                                     @foreach (['predominante', 'secundario', 'fraco', 'ausente'] as $status)
                                                                         @php
@@ -221,17 +222,20 @@
                                                                                         <h5 class="card-title">
                                                                                             {{ $quadrante }}
                                                                                         </h5>
-                                                                                        <p class="card-text mb-2">
+                                                                                        <h6 class="card-text mb-2">
                                                                                             {{ $descricao }}
-                                                                                        </p>
-                                                                                        <p class="card-text mb-1">
+                                                                                        </h6>
+                                                                                        {{-- <p class="card-text mb-1">
                                                                                             Média: <strong>{{ $resultado['medias'][$quadrante] ?? 'N/A' }}</strong>
-                                                                                        </p>
-                                                                                        <p class="card-text mb-1">
+                                                                                        </p> --}}
+                                                                                        <small class="card-text mb-1">
                                                                                             Ideal: {{ $culturaContexto[$quadrante]['ideal'] ?? 'N/A' }}
-                                                                                        </p>
-                                                                                        <p class="card-text">
+                                                                                        </small> <br>
+                                                                                        <small class="card-text mb-1">
                                                                                             Evitar: {{ $culturaContexto[$quadrante]['evitar'] ?? 'N/A' }}
+                                                                                        </small>
+                                                                                        <p class="card-text mt-2 mb-0">
+                                                                                            Sinais: {{ $resultado['sinais'][$quadrante] ?? 'Sem sinais suficientes.' }}
                                                                                         </p>
                                                                                     </div>
                                                                                 </div>
@@ -244,8 +248,23 @@
                                                                     Sem dados suficientes para análise de {{ $roleLabel }}.
                                                                 </div>
                                                             @endif
+
+                                                            @if ($resumoRole)
+                                                                <div class="alert alert-info mt-3">
+                                                                    <strong>Resumo geral:</strong> {{ $resumoRole }}
+                                                                </div>
+                                                            @endif
                                                         </div>
                                                     @endforeach
+
+                                                    @if(!empty($data['resumoGeral']))
+                                                        <div class="mb-5">
+                                                            <h4 class="mb-3 text-center">📌 Resumo Geral da Organização</h4>
+                                                            <div class="alert alert-success">
+                                                                {{ $data['resumoGeral'] }}
+                                                            </div>
+                                                        </div>
+                                                    @endif
                                                 </div>
 
                                                 <div class="modal-footer">

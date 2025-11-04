@@ -11,6 +11,7 @@ use App\Models\Question;
 use App\Models\StandardCampaign;
 use App\Models\Campaign;
 use App\Models\Plain;
+use App\Models\DiagnosticQuadrantAnalysis;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Services\OpenAIService;
@@ -96,6 +97,24 @@ class DiagnosticController extends Controller
                 'evitar' => 'Pode gerar clima tóxico e cultura baseada apenas em números.'
             ]
         ];
+    }
+
+    private function hasAnswersChanged(Diagnostic $diagnostic, string $role): bool
+    {
+        $lastAnswer = Answer::where('diagnostic_id', $diagnostic->id)
+            ->whereHas('user', fn($q) => $q->where('role', $role))
+            ->latest('updated_at')
+            ->first();
+
+        $lastAnalysis = DiagnosticQuadrantAnalysis::where('diagnostic_id', $diagnostic->id)
+            ->where('role', $role)
+            ->latest('updated_at')
+            ->first();
+
+        if (!$lastAnalysis) return true;
+        if (!$lastAnswer) return false;
+
+        return $lastAnswer->updated_at > $lastAnalysis->updated_at;
     }
 
     private function prepareDiagnosticData(Diagnostic $diagnostic, $authUser, OpenAIService $openAIService): array
@@ -188,13 +207,41 @@ class DiagnosticController extends Controller
 
         $userRoles = ['admin', 'user'];
         $culturaResultados = [];
+        $resumoPorRole = [];
+        $resumoGeral = null;
 
         foreach ($userRoles as $role) {
+            $analysis = DiagnosticQuadrantAnalysis::where('diagnostic_id', $diagnostic->id)
+                ->where('tenant_id', $authUser->tenant_id)
+                ->where('role', $role)
+                ->first();
+            
+            $needsAnalysis = !$analysis && $this->hasAnswersChanged($diagnostic, $role, $authUser->tenant_id);
+
+            if ($analysis && !$needsAnalysis) {
+                $culturaResultados[$role] = [
+                    'medias' => $analysis->medias,
+                    'classificacao' => $analysis->classificacao,
+                    'sinais' => $analysis->sinais
+                ];
+
+                if (!empty($analysis->resumo)) {
+                    $resumoPorRole[$role] = $analysis->resumo;
+                }
+
+                continue;
+            }
+
             $respostasPorRole = Answer::where('diagnostic_id', $diagnostic->id)
                 ->where('tenant_id', $authUser->tenant_id)
                 ->whereHas('user', fn($q) => $q->where('role', $role))
-                ->get()
-                ->groupBy('question_id');
+                ->get();
+
+            if ($respostasPorRole->isEmpty()) {
+                continue;
+            }
+
+            $respostasPorRole = $respostasPorRole->groupBy('question_id');
 
             $pontuacoesPorCategoria = [];
             $respostasAbertas = [];
@@ -211,7 +258,8 @@ class DiagnosticController extends Controller
                     foreach ($answers as $ans) {
                         $respostasAbertas[] = [
                             'question' => $question->text,
-                            'answer' => $ans->text
+                            'answer' => $ans->text,
+                            'category' => $question->category
                         ];
                     }
                 }
@@ -247,17 +295,68 @@ class DiagnosticController extends Controller
                 'fraco'        => [$quadrantesOrdenados[2] ?? null],
                 'ausente'      => array_slice($quadrantesOrdenados, 3)
             ];
+            
+            $respostasPorQuadrante = [];            
+            foreach ($respostasAbertas as $resp) {
+                $category = $resp['category'] ?? null;
+                $quadrante = $mapaQuadrantes[$category] ?? null;
+                if ($quadrante) {
+                    $respostasPorQuadrante[$quadrante][] = $resp['answer'];
+                }
+            }            
 
-            $analiseTextual = [];
-            if (!empty($respostasAbertas)) {
-                $analiseTextual = $openAIService->analyzeQuadrantContext($respostasAbertas, $culturaMedias->toArray());
+            $sinaisPorQuadrante = [];
+            foreach ($respostasPorQuadrante as $quadrante => $resps) {
+                $sinaisPorQuadrante[$quadrante] = $openAIService->analyzeQuadrant($quadrante, $resps);
             }
+
+            $textoParaIA = '';
+            foreach ($sinaisPorQuadrante as $quadrante => $texto) {
+                $textoParaIA .= "{$texto}\n\n";
+            }
+            $resumoRole = $openAIService->analyzeSummaryFromSinais($role, $textoParaIA);
+            $resumoPorRole[$role] = $resumoRole;
+
+            DiagnosticQuadrantAnalysis::updateOrCreate(
+                [
+                    'diagnostic_id' => $diagnostic->id,
+                    'tenant_id' => $authUser->tenant_id,
+                    'role' => $role
+                ],
+                [
+                    'medias' => $culturaMedias,
+                    'classificacao' => $quadranteClassificado,
+                    'sinais' => $sinaisPorQuadrante,
+                    'resumo' => $resumoRole,
+                    'resumo_geral' => null
+                ]
+            );
 
             $culturaResultados[$role] = [
                 'medias' => $culturaMedias,
                 'classificacao' => $quadranteClassificado,
-                'analise_textual' => $analiseTextual
+                'sinais' => $sinaisPorQuadrante
             ];
+        }
+
+        if (!empty($resumoPorRole)) {
+            $textoGeral = '';
+            foreach ($resumoPorRole as $role => $resumo) {
+                $textoGeral .= strtoupper($role) . ":\n";
+                $textoGeral .= $resumo . "\n\n";
+            }
+
+            $resumoGeral = $openAIService->analyzeSummaryFromSinais('geral', $textoGeral);
+
+            DiagnosticQuadrantAnalysis::where('diagnostic_id', $diagnostic->id)
+                ->where('tenant_id', $authUser->tenant_id)
+                ->update(['resumo_geral' => $resumoGeral]);
+        } else {
+            $existing = DiagnosticQuadrantAnalysis::where('diagnostic_id', $diagnostic->id)
+                ->where('tenant_id', $authUser->tenant_id)
+                ->first();
+
+            $resumoGeral = $existing->resumo_geral ?? null;
         }
 
         return [
@@ -269,7 +368,9 @@ class DiagnosticController extends Controller
             'categoryAverages' => $categoryAverages,
             'culturaAverages' => $culturaAverages, 
             'overallAverage' => $overallAverage,
-            'analisePorRole' => $culturaResultados
+            'analisePorRole' => $culturaResultados,
+            'resumoPorRole' => $resumoPorRole,
+            'resumoGeral' => $resumoGeral
         ];
     }
 
@@ -467,7 +568,8 @@ class DiagnosticController extends Controller
                         'tenant_id'     => $authUser->tenant->id
                     ],
                     [
-                        'note'          => $answer['note']
+                        'note'          => $answer['note'],
+                        'text'          => null
                     ]
                 );
             }
