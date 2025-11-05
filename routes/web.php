@@ -55,4 +55,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuario.store');    
         Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuario.destroy');    
     });
+
+    // apenas admin
+    Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+        Route::get('/diagnostico/{id}/show', [DiagnosticController::class, 'show'])->name('diagnostico.show');
+    });
 });

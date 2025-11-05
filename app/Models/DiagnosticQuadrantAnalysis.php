@@ -23,9 +23,11 @@ class DiagnosticQuadrantAnalysis extends Model
     ];
 
     protected $casts = [
-        'medias' => 'array',
-        'classificacao' => 'array',
-        'sinais' => 'array',
+        'medias'            => 'array',
+        'classificacao'     => 'array',
+        'sinais'            => 'array',
+        'resumo'            => 'string',
+        'resumo_geral'      => 'string'
     ];
 
     public function diagnostic()
@@ -36,5 +38,10 @@ class DiagnosticQuadrantAnalysis extends Model
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function comparativeRoles()
+    {
+        return $this->hasMany(ComparativeRole::class, 'diagnostic_quadrant_analysis_id');
     }
 }

@@ -83,17 +83,14 @@ class OpenAIService
             Você é um especialista em cultura e clima organizacional.
             Analise as respostas abaixo relacionadas ao quadrante '{$quadrante}'.
             
-            Objetivo: identificar sinais que indiquem a **presença, parcialidade ou ausência** do quadrante.  
-            Para cada sinal, indique claramente se ele representa **presença** ou **ausência** do quadrante.
-
-            Instruções:
-            - Liste apenas os sinais mais relevantes.
-            - Cada sinal deve começar com 'Presença:' ou 'Ausência:' e **ficar em uma linha separada**.
-            - Use apenas quebras de linha (\n), sem bullets ou números.
-            - Agrupe ideias semelhantes em uma única linha.
-            - Limite toda a análise a **no máximo 100 palavras**.
-            - Evite repetições e exemplos longos.
-            - Concentre-se em comportamentos, práticas ou percepções que caracterizam o quadrante.
+            Gere um texto corrido e claro, de até 120 palavras, que:
+            - Destaque de forma natural os **sinais de presença** e **sinais de ausência** desse quadrante.
+            - Evite repetições, listas ou frases iniciadas por 'Presença:' ou 'Ausência:'.
+            - Use linguagem fluida e profissional, com frases completas e bem conectadas.
+            - Deixe claro, dentro do texto, quais comportamentos ou percepções demonstram a presença do quadrante
+            e quais evidenciam sua ausência.
+            - Mantenha o texto interpretativo, sem bullets, listas ou enumerações.
+            - Evite frases genéricas e repetições. Seja objetivo e interpretativo.
             
             Respostas:
             - {$respostasTexto}
@@ -140,5 +137,72 @@ class OpenAIService
         $result = $response->json();
 
         return $result['choices'][0]['message']['content'] ?? '';
+    }
+
+    public function analyzeComparativeTable(string $resumoUser, string $resumoAdmin): array
+    {
+        $prompt = "
+            Você é um analista de cultura organizacional.
+            Compare os dois resumos abaixo — um dos colaboradores e outro da gestão — 
+            e produza uma tabela comparativa com os seguintes elementos fixos:
+            1. Cultura predominante
+            2. Reconhecimento
+            3. Comunicação
+            4. Liderança
+            5. Comprometimento
+            6. Aspiração
+
+            Gere o resultado **somente em JSON**, no formato:
+            [
+                {
+                    \"elemento\": \"Cultura predominante\",
+                    \"colaboradores\": \"Hierárquica + traços de Mercado\",
+                    \"gestao\": \"Clã + Hierárquica\"
+                },
+                ...
+            ]
+
+            Seja conciso, objetivo e utilize frases curtas e comparativas.
+
+            ---
+            RESUMO DOS COLABORADORES:
+            {$resumoUser}
+
+            ---
+            RESUMO DA GESTÃO:
+            {$resumoAdmin}
+        ";
+
+        $response = Http::withToken($this->apiKey)->post($this->apiUrl, [
+            'model' => 'gpt-3.5-turbo',
+            'messages' => [['role' => 'user', 'content' => $prompt]],
+            'temperature' => 0.4,
+            'max_tokens' => 1200,
+        ]);
+
+        $content = trim($response->json('choices.0.message.content', ''));
+        $decoded = json_decode($content, true);
+
+        $elementosFixos = [
+            'Cultura predominante',
+            'Reconhecimento',
+            'Comunicação',
+            'Liderança',
+            'Comprometimento',
+            'Aspiração'
+        ];
+
+        $final = [];
+        foreach ($elementosFixos as $el) {
+            $match = collect($decoded ?? [])->firstWhere('elemento', $el);
+
+            $final[] = [
+                'elemento' => $el,
+                'colaboradores' => $match['colaboradores'] ?? 'Sem dados',
+                'gestao' => $match['gestao'] ?? 'Sem dados',
+            ];
+        }
+
+        return $final;
     }
 }

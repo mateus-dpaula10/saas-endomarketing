@@ -24,7 +24,7 @@
                     </div>  
                 @endif
 
-                <div class="header d-flex justify-content-between align-items-center mb-3">
+                <div class="header d-flex justify-content-between align-items-center mb-5">
                     <h4>Diagnósticos</h4>
                 </div>
                 
@@ -68,9 +68,9 @@
                                                 <button class="btn btn-alert btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                                                     Visualizar respostas
                                                 </button>
-                                                <button class="btn btn-success btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#resultadoModal-{{ $diagnostic->id }}">
+                                                <a class="btn btn-success btn-sm mt-1" href="{{ route('diagnostico.show', $diagnostic->id) }}">
                                                     Visualizar resultado do diagnóstico
-                                                </button>
+                                                </a>
                                             @endif                                            
                                         @elseif ($authUser->role === 'superadmin')
                                             <button class="btn btn-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>
@@ -159,114 +159,6 @@
                                                         </div>
                                                     @endforeach
                                                 </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="modal fade" id="resultadoModal-{{ $diagnostic->id }}" tabindex="-1" aria-labelledby="resultadoModalLabel-{{ $diagnostic->id }}" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered modal-xl">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Resultado do Diagnóstico '{{ $diagnostic->title }}'</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                                </div>
-                                                
-                                                <div class="modal-body">
-                                                    @php
-                                                        $roles = ['admin' => 'Liderança / Gestão', 'user' => 'Colaboradores'];
-                                                    @endphp
-
-                                                    @foreach ($roles as $roleKey => $roleLabel)
-                                                        @php
-                                                            $resultado = $data['analisePorRole'][$roleKey] ?? null;
-                                                            $resumoRole = $data['resumoPorRole'][$roleKey] ?? null;
-                                                        @endphp
-
-                                                        <div class="mb-5">
-                                                            <h4 class="mb-3 text-center">📊 {{ $roleLabel }}</h4>                                                            
-
-                                                            @if ($resultado && !empty($resultado['classificacao']))
-                                                                <div class="row row-cols-1 row-cols-md-2 g-3">
-                                                                    @foreach (['predominante', 'secundario', 'fraco', 'ausente'] as $status)
-                                                                        @php
-                                                                            $quadrantes = $resultado['classificacao'][$status] ?? [];
-                                                                            $badgeClass = match($status) {
-                                                                                'predominante' => '#198754',
-                                                                                'secundario'   => '#D1E7DD',
-                                                                                'fraco'        => '#F8D7DA',
-                                                                                'ausente'      => '#DC3545',
-                                                                                default        => 'bg-light'
-                                                                            };
-                                                                            $textColor = match($status) {
-                                                                                'secundario'   => '#0a3622',
-                                                                                'fraco'        => '#58151c', 
-                                                                                default        => '#FFF'
-                                                                            };
-
-                                                                            $descricao = match($status) {
-                                                                                'predominante' => 'Cultura predominante — representa o quadrante mais forte na organização.',
-                                                                                'secundario'   => 'Traços secundários — influenciam, mas não definem o perfil dominante.',
-                                                                                'fraco'        => 'Cultura fraca ou ausente — pouco presente nas práticas organizacionais.',
-                                                                                'ausente'      => 'Cultura ausente — praticamente inexistente no ambiente atual.',
-                                                                                default        => ''
-                                                                            }
-                                                                        @endphp
-
-                                                                        @foreach ($quadrantes as $quadrante)
-                                                                            <div class="col">
-                                                                                <div class="card h-100" style="background-color: {{ $badgeClass }}; color: {{ $textColor }}">
-                                                                                    <div class="card-body">
-                                                                                        <h5 class="card-title">
-                                                                                            {{ $quadrante }}
-                                                                                        </h5>
-                                                                                        <h6 class="card-text mb-2">
-                                                                                            {{ $descricao }}
-                                                                                        </h6>
-                                                                                        {{-- <p class="card-text mb-1">
-                                                                                            Média: <strong>{{ $resultado['medias'][$quadrante] ?? 'N/A' }}</strong>
-                                                                                        </p> --}}
-                                                                                        <small class="card-text mb-1">
-                                                                                            Ideal: {{ $culturaContexto[$quadrante]['ideal'] ?? 'N/A' }}
-                                                                                        </small> <br>
-                                                                                        <small class="card-text mb-1">
-                                                                                            Evitar: {{ $culturaContexto[$quadrante]['evitar'] ?? 'N/A' }}
-                                                                                        </small>
-                                                                                        <p class="card-text mt-2 mb-0">
-                                                                                            Sinais: {{ $resultado['sinais'][$quadrante] ?? 'Sem sinais suficientes.' }}
-                                                                                        </p>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        @endforeach
-                                                                    @endforeach
-                                                                </div>
-                                                            @else
-                                                                <div class="alert alert-warning text-center">
-                                                                    Sem dados suficientes para análise de {{ $roleLabel }}.
-                                                                </div>
-                                                            @endif
-
-                                                            @if ($resumoRole)
-                                                                <div class="alert alert-info mt-3">
-                                                                    <strong>Resumo geral:</strong> {{ $resumoRole }}
-                                                                </div>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-
-                                                    @if(!empty($data['resumoGeral']))
-                                                        <div class="mb-5">
-                                                            <h4 class="mb-3 text-center">📌 Resumo Geral da Organização</h4>
-                                                            <div class="alert alert-success">
-                                                                {{ $data['resumoGeral'] }}
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                                                 </div>

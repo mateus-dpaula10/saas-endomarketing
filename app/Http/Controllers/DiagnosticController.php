@@ -12,6 +12,7 @@ use App\Models\StandardCampaign;
 use App\Models\Campaign;
 use App\Models\Plain;
 use App\Models\DiagnosticQuadrantAnalysis;
+use App\Models\ComparativeRole;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Services\OpenAIService;
@@ -39,6 +40,21 @@ class DiagnosticController extends Controller
             'culturaContexto' => $this->culturaContexto()
         ]); 
     }
+
+    public function show(int $id)
+    {
+        $authUser = auth()->user();
+        $diagnostic = Diagnostic::with('questions')->findOrFail($id);
+
+        $openAIService = app(OpenAIService::class);
+
+        $data = $this->prepareDiagnosticData($diagnostic, $authUser, $openAIService);
+
+        $culturaContexto = $this->culturaContexto();
+
+        return view('diagnostic.show', compact('diagnostic', 'data', 'culturaContexto'));
+    }
+
 
     private function categoriaFormatada(): array
     {
@@ -132,15 +148,12 @@ class DiagnosticController extends Controller
 
             if ($question->type === 'fechada') {
                 $answersText = [];
-
                 foreach ($answers as $ans) {
-                    $selectedOption = collect($question->options)
-                        ->firstWhere('weight', $ans->note);
+                    $selectedOption = collect($question->options)->firstWhere('weight', $ans->note);
                     $answersText[] = $selectedOption['text'] ?? "Opção não encontrada ({$ans->note})";
                 }
 
                 $avg = $answers->avg('note');
-
                 if (!is_null($avg)) {
                     $categoryScores[$question->category][] = $avg;
                     $allScores[] = $avg;                        
@@ -158,9 +171,7 @@ class DiagnosticController extends Controller
             foreach ($answers as $ans) {
                 if (!$ans->analyzed) {
                     $score = $openAIService->gradeAnswer($question->text, $ans->text);
-                    $ans->score = $score;
-                    $ans->analyzed = true;
-                    $ans->save();
+                    $ans->update(['score' => $score, 'analyzed' => true]);
                 } else {
                     $score = $ans->score;
                 }
@@ -171,7 +182,6 @@ class DiagnosticController extends Controller
             }
 
             $avgScore = collect($analyzed)->avg('score');
-
             if (!is_null($avgScore)) {
                 $categoryScores[$question->category][] = $avgScore;
                 $allScores[] = $avgScore;
@@ -191,15 +201,10 @@ class DiagnosticController extends Controller
 
         $overallAverage = round(collect($allScores)->avg(), 2);
         
-        $culturaScoresGeral = [
-            'Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []
-        ];
-
+        $culturaScoresGeral = ['Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []];
         foreach ($categoryAverages as $categoria => $media) {
             $quadrante = $mapaQuadrantes[$categoria] ?? null;
-            if ($quadrante) {
-                $culturaScoresGeral[$quadrante][] = $media;
-            }
+            if ($quadrante) $culturaScoresGeral[$quadrante][] = $media;
         }
 
         $culturaAverages = collect($culturaScoresGeral)
@@ -211,7 +216,8 @@ class DiagnosticController extends Controller
         $resumoGeral = null;
 
         foreach ($userRoles as $role) {
-            $analysis = DiagnosticQuadrantAnalysis::where('diagnostic_id', $diagnostic->id)
+            $analysis = DiagnosticQuadrantAnalysis::with('comparativeRoles')
+                ->where('diagnostic_id', $diagnostic->id)
                 ->where('tenant_id', $authUser->tenant_id)
                 ->where('role', $role)
                 ->first();
@@ -220,15 +226,14 @@ class DiagnosticController extends Controller
 
             if ($analysis && !$needsAnalysis) {
                 $culturaResultados[$role] = [
-                    'medias' => $analysis->medias,
-                    'classificacao' => $analysis->classificacao,
-                    'sinais' => $analysis->sinais
+                    'medias'            => $analysis->medias,
+                    'classificacao'     => $analysis->classificacao,
+                    'sinais'            => $analysis->sinais,
+                    'comparativoRoles'  => $analysis->comparativeRoles,
                 ];
-
                 if (!empty($analysis->resumo)) {
                     $resumoPorRole[$role] = $analysis->resumo;
                 }
-
                 continue;
             }
 
@@ -237,12 +242,9 @@ class DiagnosticController extends Controller
                 ->whereHas('user', fn($q) => $q->where('role', $role))
                 ->get();
 
-            if ($respostasPorRole->isEmpty()) {
-                continue;
-            }
+            if ($respostasPorRole->isEmpty()) continue;
 
             $respostasPorRole = $respostasPorRole->groupBy('question_id');
-
             $pontuacoesPorCategoria = [];
             $respostasAbertas = [];
 
@@ -250,32 +252,21 @@ class DiagnosticController extends Controller
                 $question = $diagnostic->questions->firstWhere('id', $questionId);
                 if (!$question) continue;
 
-                if ($question->type === 'fechada') {
-                    $avg = $answers->avg('note');
-                } else {
-                    $avg = $answers->avg('score');
+                $avg = $question->type === 'fechada' ? $answers->avg('note') : $answers->avg('score');
+                if (!is_null($avg)) $pontuacoesPorCategoria[$question->category][] = $avg;
 
+                if ($question->type === 'aberta') {
                     foreach ($answers as $ans) {
                         $respostasAbertas[] = [
                             'question' => $question->text,
                             'answer' => $ans->text,
-                            'category' => $question->category
+                            'category' => $question->category,
                         ];
                     }
                 }
-
-                if (!is_null($avg)) {
-                    $pontuacoesPorCategoria[$question->category][] = $avg;
-                }
             }
 
-            $culturaScores = [
-                'Clã' => [], 
-                'Adhocracia' => [], 
-                'Hierárquica' => [], 
-                'Mercado' => []
-            ];
-
+            $culturaScores = ['Clã' => [], 'Adhocracia' => [], 'Hierárquica' => [], 'Mercado' => []];
             foreach ($pontuacoesPorCategoria as $categoria => $medias) {
                 $quadrante = $mapaQuadrantes[$categoria] ?? null;
                 if ($quadrante) {
@@ -284,25 +275,29 @@ class DiagnosticController extends Controller
             }
 
             $culturaMedias = collect($culturaScores)
-                ->map(fn($scores) => count($scores) ? round(collect($scores)->avg(), 2) : 0)
-                ->sortDesc();
+                ->map(function ($scores) {
+                    if (empty($scores)) return 0.0;
+                    $avg = collect($scores)->avg();
+                    return is_numeric($avg) ? round((float) $avg, 2) : 0.0;
+                });
+                
+            $culturaMediasOrdenadas = $culturaMedias->sortDesc()->values();
+            $culturaMediasOrdenadasAssoc = $culturaMedias->sortDesc();
 
-            $quadrantesOrdenados = array_keys($culturaMedias->toArray());
-            
+            $quadrantesOrdenados = $culturaMediasOrdenadasAssoc->keys()->toArray();
+
             $quadranteClassificado = [
                 'predominante' => [$quadrantesOrdenados[0] ?? null],
                 'secundario'   => [$quadrantesOrdenados[1] ?? null],
                 'fraco'        => [$quadrantesOrdenados[2] ?? null],
-                'ausente'      => array_slice($quadrantesOrdenados, 3)
+                'ausente'      => array_values(array_filter(array_slice($quadrantesOrdenados, 3)))
             ];
             
             $respostasPorQuadrante = [];            
             foreach ($respostasAbertas as $resp) {
                 $category = $resp['category'] ?? null;
                 $quadrante = $mapaQuadrantes[$category] ?? null;
-                if ($quadrante) {
-                    $respostasPorQuadrante[$quadrante][] = $resp['answer'];
-                }
+                if ($quadrante) $respostasPorQuadrante[$quadrante][] = $resp['answer'];
             }            
 
             $sinaisPorQuadrante = [];
@@ -310,24 +305,21 @@ class DiagnosticController extends Controller
                 $sinaisPorQuadrante[$quadrante] = $openAIService->analyzeQuadrant($quadrante, $resps);
             }
 
-            $textoParaIA = '';
-            foreach ($sinaisPorQuadrante as $quadrante => $texto) {
-                $textoParaIA .= "{$texto}\n\n";
-            }
+            $textoParaIA = implode("\n\n", $sinaisPorQuadrante);
             $resumoRole = $openAIService->analyzeSummaryFromSinais($role, $textoParaIA);
             $resumoPorRole[$role] = $resumoRole;
 
-            DiagnosticQuadrantAnalysis::updateOrCreate(
+            $analysis = DiagnosticQuadrantAnalysis::updateOrCreate(
                 [
                     'diagnostic_id' => $diagnostic->id,
                     'tenant_id' => $authUser->tenant_id,
                     'role' => $role
                 ],
                 [
-                    'medias' => $culturaMedias,
-                    'classificacao' => $quadranteClassificado,
-                    'sinais' => $sinaisPorQuadrante,
-                    'resumo' => $resumoRole,
+                    'medias' => is_array($culturaMedias) ? $culturaMedias : (method_exists($culturaMedias, 'toArray') ? $culturaMedias->toArray() : []),
+                    'classificacao' => $quadranteClassificado ?? [],
+                    'sinais' => $sinaisPorQuadrante ?? [],
+                    'resumo' => $resumoRole ?? '',
                     'resumo_geral' => null
                 ]
             );
@@ -339,11 +331,76 @@ class DiagnosticController extends Controller
             ];
         }
 
+        $comparativo = null;
+
+        if (!empty($resumoPorRole['user']) && !empty($resumoPorRole['admin'])) {
+            $analysisBase = DiagnosticQuadrantAnalysis::firstOrCreate([
+                'diagnostic_id' => $diagnostic->id,
+                'tenant_id'     => $authUser->tenant_id,
+                'role'          => 'geral'
+            ], [
+                'medias'        => [],
+                'classificacao' => [],
+                'sinais'        => [],
+                'resumo'        => '',
+                'resumo_geral'  => ''
+            ]);
+
+            $existingComparatives = ComparativeRole::where('diagnostic_quadrant_analysis_id', $analysisBase->id)->get();
+
+            $lastAnswer = Answer::where('diagnostic_id', $diagnostic->id)
+                ->where('tenant_id', $authUser->tenant_id)
+                ->whereHas('user', fn($q) => $q->whereIn('role', ['user', 'admin']))
+                ->latest('updated_at')
+                ->first();
+                
+            $comparativeUpdatedAt = $analysisBase->updated_at;
+
+            $shouldRegenerate = false;
+
+            if ($existingComparatives->isEmpty()) {
+                $shouldRegenerate = true;
+            }
+
+            if (!$shouldRegenerate && $lastAnswer) {
+                if (is_null($comparativeUpdatedAt) || $lastAnswer->updated_at > $comparativeUpdatedAt) {
+                    $shouldRegenerate = true;
+                }
+            }
+
+            if ($shouldRegenerate) {
+                $comparativoGerado = $openAIService->analyzeComparativeTable(
+                    $resumoPorRole['user'],
+                    $resumoPorRole['admin']
+                );
+
+                if (!empty($comparativoGerado) && is_array($comparativoGerado)) {
+                    \DB::transaction(function () use ($analysisBase, $comparativoGerado) {
+                        ComparativeRole::where('diagnostic_quadrant_analysis_id', $analysisBase->id)->delete();
+
+                        foreach ($comparativoGerado as $item) {
+                            ComparativeRole::create([
+                                'diagnostic_quadrant_analysis_id' => $analysisBase->id,
+                                'elemento'                        => $item['elemento'] ?? null,
+                                'colaboradores'                   => $item['colaboradores'] ?? null,
+                                'gestao'                          => $item['gestao'] ?? null
+                            ]);
+                        }
+
+                        $analysisBase->touch();
+                    });
+                }
+            }
+
+            $comparativo = ComparativeRole::where('diagnostic_quadrant_analysis_id', $analysisBase->id)
+                ->orderBy('id')
+                ->get();
+        }
+
         if (!empty($resumoPorRole)) {
             $textoGeral = '';
             foreach ($resumoPorRole as $role => $resumo) {
-                $textoGeral .= strtoupper($role) . ":\n";
-                $textoGeral .= $resumo . "\n\n";
+                $textoGeral .= strtoupper($role) . ":\n{$resumo}\n\n";
             }
 
             $resumoGeral = $openAIService->analyzeSummaryFromSinais('geral', $textoGeral);
@@ -360,17 +417,18 @@ class DiagnosticController extends Controller
         }
 
         return [
-            'diagnostic' => $diagnostic,
-            'hasAnswered' => Answer::where('diagnostic_id', $diagnostic->id)
+            'diagnostic'       => $diagnostic,
+            'hasAnswered'      => Answer::where('diagnostic_id', $diagnostic->id)
                 ->where('user_id', $authUser->id)->exists(),
-            'hasQuestions' => $diagnostic->questions->isNotEmpty(),
-            'answersGrouped' => $answersGrouped,
+            'hasQuestions'     => $diagnostic->questions->isNotEmpty(),
+            'answersGrouped'   => $answersGrouped,
             'categoryAverages' => $categoryAverages,
-            'culturaAverages' => $culturaAverages, 
-            'overallAverage' => $overallAverage,
-            'analisePorRole' => $culturaResultados,
-            'resumoPorRole' => $resumoPorRole,
-            'resumoGeral' => $resumoGeral
+            'culturaAverages'  => $culturaAverages, 
+            'overallAverage'   => $overallAverage,
+            'analisePorRole'   => $culturaResultados,
+            'resumoPorRole'    => $resumoPorRole,
+            'resumoGeral'      => $resumoGeral,
+            'comparativoRoles' => $comparativo ?? []
         ];
     }
 

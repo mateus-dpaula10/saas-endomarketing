@@ -17,6 +17,7 @@ return new class extends Migration
             $table->foreignId('diagnostic_id')->constrained()->onDelete('cascade');
             $table->string('role'); 
             $table->json('medias');
+            
             $table->json('classificacao');
             $table->json('sinais');
             $table->text('resumo')->nullable();
