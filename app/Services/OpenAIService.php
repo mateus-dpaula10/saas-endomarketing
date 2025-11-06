@@ -19,35 +19,58 @@ class OpenAIService
         try {
             $prompt = "
                 Você é um avaliador especializado em cultura e clima organizacional.
-                Sua tarefa: analisar a pergunta e a resposta e atribuir UMA NOTA (0–5) que represente o quanto a resposta efetivamente atende ao que foi perguntado **considerando a direção esperada**.
+                Sua tarefa é analisar a pergunta e a resposta e atribuir UMA NOTA (0–5) que represente a **qualidade cultural e de clima organizacional** revelada pela resposta.
 
-                Passos que o modelo deve seguir:
-                1. Identifique a intenção da pergunta: ela pede uma avaliação (ex.: 'Qual o nível de comprometimento?', 'O clima é bom?'), uma descrição (ex.: 'Como é trabalhar aqui?') ou um exemplo/ocorrência (ex.: 'Conte uma situação...').
-                2. Se a pergunta for avaliativa (pede nível/qualidade/sentimento), interprete a resposta como positiva/negativa/neutra. NOTA ALINHADA:
-                - resposta claramente positiva/indica presença do aspecto → nota alta (4–5);
-                - resposta moderada/ambígua → nota média (2–3);
-                - resposta negativa/indica ausência do aspecto → nota baixa (0–1).
-                3. Se a pergunta for descritiva ou pedir exemplos, avalie se a resposta traz informação útil e específica:
-                - detalhada e exemplifica bem → 4–5;
-                - genérica/parcial → 2–3;
-                - irrelevante/fora do escopo → 0–1.
-                4. Considere palavras-chave e tom (ex.: 'colaborativo', 'sempre', 'nunca', 'muito', 'pouco', 'não existem', 'orgulhoso', 'insatisfeito') para inferir presença/ausência.
-                5. Retorne **apenas** o número inteiro 0,1,2,3,4 ou 5 e nada mais.
+                Critério principal: avalie se a resposta indica práticas, valores e comportamentos **positivos e saudáveis** ou **negativos e problemáticos** para o ambiente organizacional.
 
-                Exemplos curtos (não retorne estes exemplos, são guia interno):
-                - Pergunta: 'Qual o nível de comprometimento das pessoas?'
-                Resposta: 'As pessoas não cumprem as tarefas e muitos faltam' → nota baixa (0–1).
-                Resposta: 'A maioria se envolve e se esforça além do horário' → nota alta (4–5).
+                ---
+
+                ### Diretrizes de avaliação:
+
+                1. **Entenda o contexto da pergunta**
+                - Perguntas podem tratar de propósito, valores, reconhecimento, comunicação, liderança, engajamento, colaboração, inovação, etc.
+                - Interprete sempre o que a resposta revela sobre o funcionamento da cultura da empresa (e não apenas se ela responde à pergunta).
+
+                2. **Atribua a nota considerando o impacto cultural:**
+                - **5:** resposta demonstra uma cultura muito saudável (propósito claro, reconhecimento, colaboração, confiança, aprendizado, diversidade, engajamento).
+                - **4:** resposta positiva, mas com pequenas limitações.
+                - **3:** resposta neutra, morna, pouco reveladora ou ambígua.
+                - **2:** resposta revela sinais de fragilidade cultural ou clima problemático.
+                - **1:** resposta claramente negativa (falta de propósito, desmotivação, conflitos, ausência de valores).
+                - **0:** resposta indica disfunção grave ou ausência total de práticas positivas.
+
+                3. **Considere o tom e palavras-chave:**
+                - Positivas: 'colaborativo', 'propósito claro', 'valorização', 'aberto', 'apoio', 'reconhecido', 'aprendizado', 'inovação', 'orgulho'.
+                - Negativas: 'pressão', 'desmotivação', 'não existe', 'só lucro', 'falta de comunicação', 'ninguém ouve', 'competição', 'desigualdade', 'não sabemos'.
+
+                4. **Não avalie a coerência técnica, mas o conteúdo cultural.**
+                Mesmo que a resposta esteja curta ou vaga, avalie o sentido cultural do que foi dito.
+
+                5. Retorne **apenas o número inteiro** (0–5) e nada mais.
+
+                ---
+
+                ### Exemplo de referência (não retorne estes exemplos):
+
+                - Pergunta: 'Por que a empresa existe? Qual é o propósito que vai além do lucro?'
+                - 'Não sei.' → 0
+                - 'Acho que só para dar lucro mesmo.' → 1
+                - 'Gerar empregos e lucro para todos.' → 3
+                - 'Gerar impacto positivo na sociedade e desenvolver pessoas.' → 5
+
                 - Pergunta: 'Como é o clima aqui?'
-                Resposta: 'Hostil, muita pressão e reclamações' → nota baixa.
-                Resposta: 'acolhedor e colaborativo' → nota alta.
+                - 'As pessoas se ajudam e celebram conquistas.' → 5
+                - 'É tranquilo, mas há pressão em algumas áreas.' → 3
+                - 'Ambiente hostil e competitivo.' → 1
+
+                ---
 
                 Agora avalie:
 
                 Pergunta: {$question}
                 Resposta: {$answer}
 
-                **Resposta esperada: apenas um número inteiro (0 a 5).**
+                **Retorne apenas o número inteiro (0–5).**
             ";
 
             $response = Http::withToken($this->apiKey)
@@ -139,12 +162,19 @@ class OpenAIService
         return $result['choices'][0]['message']['content'] ?? '';
     }
 
-    public function analyzeComparativeTable(string $resumoUser, string $resumoAdmin): array
+    public function analyzeComparativeTable(
+        string $resumoUser, 
+        string $resumoAdmin,
+        ?string $culturaUser = null,
+        ?string $culturaAdmin = null
+    ): array
     {
         $prompt = "
-            Você é um analista de cultura organizacional.
+            Você é um especialista de cultura e clima organizacional.
+
             Compare os dois resumos abaixo — um dos colaboradores e outro da gestão — 
             e produza uma tabela comparativa com os seguintes elementos fixos:
+
             1. Cultura predominante
             2. Reconhecimento
             3. Comunicação
@@ -152,24 +182,28 @@ class OpenAIService
             5. Comprometimento
             6. Aspiração
 
-            Gere o resultado **somente em JSON**, no formato:
+            **Regras importantes:**
+            - A 'Cultura predominante' deve refletir EXATAMENTE as culturas informadas a seguir, sem inferências:
+                - Colaboradores: {$culturaUser}
+                - Gestão: {$culturaAdmin}
+            - Os demais campos (Reconhecimento, Comunicação, etc.) devem ser resumidos comparativamente com base nos textos dos resumos.
+            - Seja conciso e use frases curtas e comparativas.
+            - Responda **somente com um JSON válido**, sem texto adicional e sem blocos de código.
+
+            Exemplo de formato:
             [
                 {
                     \"elemento\": \"Cultura predominante\",
-                    \"colaboradores\": \"Hierárquica + traços de Mercado\",
-                    \"gestao\": \"Clã + Hierárquica\"
+                    \"colaboradores\": \"Mercado\",
+                    \"gestao\": \"Clã\"
                 },
                 ...
             ]
 
-            Seja conciso, objetivo e utilize frases curtas e comparativas.
-
-            ---
-            RESUMO DOS COLABORADORES:
+            --- RESUMO DOS COLABORADORES:
             {$resumoUser}
 
-            ---
-            RESUMO DA GESTÃO:
+            --- RESUMO DA GESTÃO:
             {$resumoAdmin}
         ";
 
@@ -181,6 +215,8 @@ class OpenAIService
         ]);
 
         $content = trim($response->json('choices.0.message.content', ''));
+        $content = preg_replace('/^```json|```$/m', '', $content);
+        $content = trim($content);
         $decoded = json_decode($content, true);
 
         $elementosFixos = [

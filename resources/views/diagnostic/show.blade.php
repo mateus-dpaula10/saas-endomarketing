@@ -121,7 +121,7 @@
                         </div>
                     @endif
                     
-                    {{-- @if (!empty($data['comparativoRoles']) && count($data['comparativoRoles']) > 0)
+                    @if (!empty($data['comparativoRoles']) && count($data['comparativoRoles']) > 0)
                         <div class="mb-5">
                             <h4 class="mb-3 text-center">🔍 Comparativo entre Colaboradores e Gestão</h4>
 
@@ -158,7 +158,7 @@
                                 </table>
                             </div>
                         </div>
-                    @endif --}}
+                    @endif
                 </div>
             </div>
         </div>
