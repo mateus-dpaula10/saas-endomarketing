@@ -21,3 +21,11 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+respostas_genericas_cultura.txt
+categories.sql
+diagnostic_question.sql
+diagnostics.sql
+options.sql
+plains.sql
+questions.sql

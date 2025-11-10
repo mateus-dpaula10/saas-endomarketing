@@ -103,10 +103,12 @@ class DiagnosticService
             $analyzed = [];
             foreach ($answers as $ans) {
                 if (!$ans->analyzed) {
-                    $score = $openAIService->gradeAnswer($question->text, $ans->text);
-                    $ans->update(['score' => $score, 'analyzed' => true]);
+                    $score = (float) $openAIService->gradeAnswer($question->text, $ans->text);
+                    $ans->score = $score;
+                    $ans->analyzed = true;
+                    $ans->save();
                 } else {
-                    $score = $ans->score;
+                    $score = (float) $ans->score;
                 }
 
                 if (!is_null($score)) {
