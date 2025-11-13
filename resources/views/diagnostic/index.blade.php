@@ -68,9 +68,19 @@
                                                 <button class="btn btn-alert btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#respostasModal-{{ $diagnostic->id }}">
                                                     Visualizar respostas
                                                 </button>
-                                                <a class="btn btn-success btn-sm mt-1" href="{{ route('diagnostico.show', $diagnostic->id) }}">
-                                                    Visualizar resultado do diagnóstico
-                                                </a>
+
+                                                @if ($data['canGenerateResult'])
+                                                    <form action="{{ route('diagnostico.gerar', $diagnostic) }}" method="POST" class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-success btn-sm mt-1">
+                                                            Gerar resultado do diagnóstico
+                                                        </button>
+                                                    </form>                                           
+                                                @else
+                                                    <small class="text-muted d-block mt-2">
+                                                        {{ $data['percentAnswered'] }}% dos colaboradores responderam (mínimo: 50%)
+                                                    </small>
+                                                @endif
                                             @endif                                            
                                         @elseif ($authUser->role === 'superadmin')
                                             <button class="btn btn-primary btn-sm mt-1" data-bs-toggle="modal" data-bs-target="#perguntasModal-{{ $diagnostic->id }}">Visualizar</button>
@@ -147,8 +157,10 @@
 
                                                             @if ($q['question']->type === 'fechada')
                                                                 <ul>
-                                                                    @foreach ($q['answers'] as $text)
-                                                                        <li>{{ $text }}</li>
+                                                                    @foreach ($q['answers'] as $answer)
+                                                                        <li>
+                                                                            Nota: {{ $answer['note'] }}
+                                                                        </li>
                                                                     @endforeach
                                                                 </ul>
                                                             @else

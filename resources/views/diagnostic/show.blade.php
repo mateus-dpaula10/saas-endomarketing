@@ -36,8 +36,8 @@
 
                     @foreach ($roles as $roleKey => $roleLabel)
                         @php
-                            $resultado = $data['analisePorRole'][$roleKey] ?? null;
-                            $resumoRole = $data['resumoPorRole'][$roleKey] ?? null;
+                            $resultado = $result['analisePorRole'][$roleKey] ?? null;
+                            $resumoRole = $result['resumoPorRole'][$roleKey] ?? null;
                         @endphp
 
                         <div class="mb-5">
@@ -112,16 +112,16 @@
                         </div>
                     @endforeach
 
-                    @if(!empty($data['resumoGeral']))
+                    @if(!empty($result['resumoGeral']))
                         <div class="mb-5">
                             <h4 class="mb-3 text-center">📌 Resumo Geral da Organização</h4>
                             <div class="alert alert-success">
-                                {{ $data['resumoGeral'] }}
+                                {{ $result['resumoGeral'] }}
                             </div>
                         </div>
                     @endif
                     
-                    @if (!empty($data['comparativoRoles']) && count($data['comparativoRoles']) > 0)
+                    @if (!empty($result['comparativoRoles']) && count($result['comparativoRoles']) > 0)
                         <div class="mb-5">
                             <h4 class="mb-3 text-center">🔍 Comparativo entre Colaboradores e Gestão</h4>
 
@@ -135,7 +135,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach ($data['comparativoRoles'] as $comparativo)
+                                        @foreach ($result['comparativoRoles'] as $comparativo)
                                             @php
                                                 $label = match($comparativo['elemento'] ?? $comparativo->elemento ?? '') {
                                                     'cultura_predominante' => 'Cultura Predominante',

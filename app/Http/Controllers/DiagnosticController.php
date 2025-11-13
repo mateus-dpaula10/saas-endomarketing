@@ -13,6 +13,7 @@ use App\Models\Campaign;
 use App\Models\Plain;
 use App\Models\DiagnosticQuadrantAnalysis;
 use App\Models\ComparativeRole;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Services\OpenAIService;
@@ -20,37 +21,115 @@ use App\Services\DiagnosticService;
 
 class DiagnosticController extends Controller
 {
-    public function index(OpenAIService $openAIService) 
+    public function index() 
     {
         $authUser = auth()->user();
-        $diagnostics = Diagnostic::with(['questions.options', 'campaigns', 'plain'])->get();
+
+        $diagnostics = Diagnostic::with(['questions.options', 'plain'])->get();
         
         $diagnosticsFiltered = $diagnostics
-            ->filter(fn($d) => $authUser->role === 'superadmin' || $d->plain_id === ($authUser->tenant->plain_id ?? null))
-            ->map(fn($d) => app(DiagnosticService::class)->prepareDiagnosticData($d, $authUser, $openAIService)
-        );
+            ->filter(function ($d) use ($authUser) {
+                return $authUser->role === 'superadmin'
+                    || $d->plain_id === ($authUser->tenant->plain_id ?? null);
+            })
+            ->map(function ($d) use ($authUser) {
+                $companyUsers = User::where('tenant_id', $authUser->tenant_id)
+                    ->whereIn('role', ['admin', 'user'])
+                    ->pluck('id');
+                
+                $answeredCount = Answer::where('diagnostic_id', $d->id)
+                    ->whereIn('user_id', $companyUsers)
+                    ->distinct('user_id')
+                    ->count('user_id');
+                
+                $totalUsers = $companyUsers->count();
+                $percentAnswered = $totalUsers > 0 ? ($answeredCount / $totalUsers) * 100 : 0;
+
+                $canGenerateResult = $percentAnswered >= 50;
+
+                $answers = Answer::with(['question', 'user'])
+                    ->where('diagnostic_id', $d->id)
+                    ->where('user_id', $authUser->id)
+                    ->get();
+
+                $answersGrouped = $answers
+                    ->groupBy('question_id')
+                    ->map(function ($group) {
+                        $first = $group->first();
+                        $question = $first->question ?? null;
+
+                        $answersList = $group->map(function ($a) {
+                            return [
+                                'text' => $a->text ?? ($a->option->text ?? null),
+                                'user' => $a->user ? $a->user->name : null,
+                                'note' => $a->note ?? null
+                            ];
+                        })->toArray();
+
+                        return [
+                            'question' => $question,
+                            'answers'  => $answersList,
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+                
+                $hasAnswered = Answer::where('diagnostic_id', $d->id)
+                    ->where('user_id', $authUser->id)
+                    ->exists();
+
+                return [
+                    'diagnostic'         => $d,
+                    'hasAnswered'        => $hasAnswered,
+                    'hasQuestions'       => $d->questions->isNotEmpty(),
+                    'answersGrouped'     => $answersGrouped,
+                    'canGenerateResult'  => $canGenerateResult,
+                    'percentAnswered'    => round($percentAnswered, 1)
+                ];
+            });
 
         return view('diagnostic.index', [
             'authUser' => $authUser,
             'diagnosticsFiltered' => $diagnosticsFiltered,
-            'categoriaFormatada' => DiagnosticService::categoriaFormatada(),
-            'mapaQuadrantes' => DiagnosticService::mapaQuadrantes(),
-            'culturaContexto' => DiagnosticService::culturaContexto()
+            'categoriaFormatada' => DiagnosticService::categoriaFormatada()
         ]); 
     }
 
-    public function show(int $id)
+    public function gerarResultado(Diagnostic $diagnostic, OpenAIService $openAIService)
     {
         $authUser = auth()->user();
-        $diagnostic = Diagnostic::with('questions.options')->findOrFail($id);
-        $openAIService = app(OpenAIService::class);
+        $tenantPlano = $authUser->tenant->plain_id ?? 1;
+        $diagnosticService = app(DiagnosticService::class);
 
-        $data = app(DiagnosticService::class)->prepareDiagnosticData($diagnostic, $authUser, $openAIService);
+        if ($tenantPlano == 1) {
+            $result = $diagnosticService->prepareDiagnosticData($diagnostic, $authUser, $openAIService);
+        } elseif (in_array($tenantPlano, [2, 3])) {
+            $result = $diagnosticService->prepareDiagnosticDataPlano2e3($diagnostic, $authUser, $openAIService);
+        } else {
+            abort(404, "Plano {$tenantPlano} não reconhecido para esta empresa.");
+        }
+
+        return redirect()
+            ->route('diagnostico.show', $diagnostic->id)
+            ->with('result', $result)
+            ->with('success', 'Resultado do diagnóstico gerado com sucesso!');
+    }
+
+    public function show(Diagnostic $diagnostic)
+    {
+        $result = session('result');
+
+        if (!$result) {
+            return redirect()->route('diagnostico.index')
+                ->with('error', 'Nenhum resultado encontrado. Gere o diagnóstico novamente.');
+        }
+
+        $culturaContexto = $result['culturaContexto'] ?? DiagnosticService::culturaContexto();
 
         return view('diagnostic.show', [
             'diagnostic' => $diagnostic,
-            'data' => $data,
-            'culturaContexto' => DiagnosticService::culturaContexto()
+            'result',
+            'culturaContexto' => $culturaContexto
         ]);
     }
 
@@ -227,7 +306,9 @@ class DiagnosticController extends Controller
     }
 
     public function answer(Diagnostic $diagnostic) {
-        return view ('diagnostic.answer', compact('diagnostic'));
+        $authUser = auth()->user();
+
+        return view ('diagnostic.answer', compact('diagnostic', 'authUser'));
     }
 
     public function submitAnswers(Diagnostic $diagnostic, Request $request) {

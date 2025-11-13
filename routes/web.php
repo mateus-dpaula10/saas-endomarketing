@@ -57,7 +57,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // apenas admin
-    Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::post('/diagnostico/{diagnostic}/gerar', [DiagnosticController::class, 'gerarResultado'])->name('diagnostico.gerar');
         Route::get('/diagnostico/{id}/show', [DiagnosticController::class, 'show'])->name('diagnostico.show');
     });
 });

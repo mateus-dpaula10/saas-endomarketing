@@ -36,35 +36,42 @@
                         <label class="form-label">Perguntas</label>
                         <div id="questions-wrapper">
                             @foreach ($diagnostic->questions as $index => $question)
-                                <div class="question-block mb-3 border rounded p-3 position-relative">
-                                    <label class="form-label">Texto da pergunta</label>
-                                    <input 
-                                        type="text" 
-                                        class="form-control" 
-                                        value="{{ $question->text }}"
-                                        disabled
-                                    >
+                                @php
+                                    $targets = json_decode($question->pivot->target, true) ?? [];
+                                    $mostrar = in_array($authUser->role, $targets) || $authUser->role === 'superadmin';
+                                @endphp
 
-                                    @if ($question->type === 'fechada')                                        
-                                        <select 
-                                            name="answers[{{ $question->id }}][note]" 
-                                            class="form-control mt-2" 
-                                            required
+                                @if ($mostrar)
+                                    <div class="question-block mb-3 border rounded p-3 position-relative">
+                                        <label class="form-label">Texto da pergunta</label>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            value="{{ $question->text }}"
+                                            disabled
                                         >
-                                            <option value="">Selecione uma opção</option>                                            
-                                            @foreach ($question->options as $option)    
-                                                <option value="{{ $option->weight }}">{{ $option->text }}</option>                                                
-                                            @endforeach
-                                        </select>
-                                    @else                                        
-                                        <textarea 
-                                            name="answers[{{ $question->id }}][text]" 
-                                            class="form-control mt-2" 
-                                            rows="5" 
-                                            placeholder="Escreva sua resposta" 
-                                            required></textarea>
-                                    @endif
-                                </div>
+
+                                        @if ($question->type === 'fechada')                                        
+                                            <select 
+                                                name="answers[{{ $question->id }}][note]" 
+                                                class="form-control mt-2" 
+                                                required
+                                            >
+                                                <option value="">Selecione uma opção</option>                                            
+                                                @foreach ($question->options as $option)    
+                                                    <option value="{{ $option->weight }}">{{ $option->text }}</option>                                                
+                                                @endforeach
+                                            </select>
+                                        @else                                        
+                                            <textarea 
+                                                name="answers[{{ $question->id }}][text]" 
+                                                class="form-control mt-2" 
+                                                rows="5" 
+                                                placeholder="Escreva sua resposta" 
+                                                required></textarea>
+                                        @endif
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>

@@ -66,7 +66,7 @@
                                 <h5>Usuários com diagnósticos pendentes:</h5>
                                 <ul class="mb-0 mt-3">
                                     @foreach($pendingUsers as $user)
-                                        <li>
+                                        <li class="mb-1">
                                             <strong>{{ $user['user']->name }}</strong> 
                                             - {{ $user['pendingCount'] }} diagnóstico(s) pendente(s)
                                             <ul class="mt-2">

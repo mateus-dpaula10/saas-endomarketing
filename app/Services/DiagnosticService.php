@@ -410,6 +410,13 @@ class DiagnosticService
         ];
     }
 
+    public function prepareDiagnosticDataPlano2e3(Diagnostic $diagnostic, $authUser, OpenAIService $openAIService): array
+    {
+        return [
+            'diagnostic' => $diagnostic
+        ];
+    }
+
     public function hasAnswersChanged(Diagnostic $diagnostic, string $role): bool
     {
         $lastAnswer = Answer::where('diagnostic_id', $diagnostic->id)
